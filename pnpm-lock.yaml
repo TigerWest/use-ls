@@ -26,6 +26,9 @@ importers:
       '@legendapp/state':
         specifier: ^2.0.0
         version: 2.1.15(react@18.3.1)
+      '@tanstack/query-core':
+        specifier: ^5.90.20
+        version: 5.90.20
       '@tanstack/react-query':
         specifier: ^5.60.0
         version: 5.90.21(react@18.3.1)

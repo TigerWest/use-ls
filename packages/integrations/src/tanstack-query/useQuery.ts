@@ -1,8 +1,9 @@
 import { useObservable, useObserve } from '@legendapp/state/react'
 import { batch, isObservable } from '@legendapp/state'
-import { QueryKey, QueryObserver, useQueryClient } from '@tanstack/react-query'
+import { QueryKey, QueryObserver } from '@tanstack/react-query'
 import { useEffect, useRef } from 'react'
 import type { Observable } from '@legendapp/state'
+import { useQueryClient } from './useQueryClient'
 
 /**
  * QueryKey를 직렬화하면서 Observable 값을 추출합니다.
@@ -69,28 +70,47 @@ export interface QueryState<TData = unknown> {
  *
  * @example
  * ```tsx
- * // 일반 값
- * const products$ = useQuery({
- *   queryKey: ['products'],
- *   queryFn: () => fetch('/api/products').then(r => r.json())
- * })
+ * import { QueryClient } from '@tanstack/react-query'
+ * import { QueryClientProvider, useQuery } from '@las/integrations'
  *
- * // Observable 값 (자동 반응)
- * const filter$ = useObservable({ category: 'electronics' })
- * const products$ = useQuery({
- *   queryKey: ['products', filter$],
- *   queryFn: () => fetch(`/api/products?category=${filter$.category.get()}`).then(r => r.json())
- * })
- * // filter$가 변경되면 자동으로 refetch!
+ * // QueryClient를 생성하고 Provider로 제공
+ * const queryClient = new QueryClient()
  *
- * // 렌더링
- * <Show if={() => products$.isSuccess.get()}>
- *   {() => (
- *     <For each={() => products$.data.get()}>
- *       {(product$) => <ProductCard $product={product$} />}
- *     </For>
- *   )}
- * </Show>
+ * function App() {
+ *   return (
+ *     <QueryClientProvider client={queryClient}>
+ *       <YourApp />
+ *     </QueryClientProvider>
+ *   )
+ * }
+ *
+ * // 컴포넌트에서 사용
+ * function YourComponent() {
+ *   // 일반 값
+ *   const products$ = useQuery({
+ *     queryKey: ['products'],
+ *     queryFn: () => fetch('/api/products').then(r => r.json())
+ *   })
+ *
+ *   // Observable 값 (자동 반응)
+ *   const filter$ = useObservable({ category: 'electronics' })
+ *   const filteredProducts$ = useQuery({
+ *     queryKey: ['products', filter$],
+ *     queryFn: () => fetch(`/api/products?category=${filter$.category.get()}`).then(r => r.json())
+ *   })
+ *   // filter$가 변경되면 자동으로 refetch!
+ *
+ *   // 렌더링
+ *   return (
+ *     <Show if={() => products$.isSuccess.get()}>
+ *       {() => (
+ *         <For each={() => products$.data.get()}>
+ *           {(product$) => <ProductCard $product={product$} />}
+ *         </For>
+ *       )}
+ *     </Show>
+ *   )
+ * }
  * ```
  */
 export function useQuery<TData = unknown>(

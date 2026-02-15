@@ -1,8 +1,9 @@
 import { useObservable, useObserve } from '@legendapp/state/react'
 import { batch } from '@legendapp/state'
-import { MutationKey, MutationObserver, useQueryClient } from '@tanstack/react-query'
+import { MutationKey, MutationObserver } from '@tanstack/react-query'
 import { useEffect, useRef } from 'react'
 import type { Observable } from '@legendapp/state'
+import { useQueryClient } from './useQueryClient'
 
 export interface UseMutationOptions<TData = unknown, TVariables = void, TContext = unknown> {
   mutationKey?: MutationKey
@@ -42,42 +43,45 @@ export interface MutationState<TData = unknown, TVariables = void, TContext = un
  *
  * @example
  * ```tsx
- * // 일반 사용
- * const createProduct$ = useMutation({
- *   mutationFn: (product: NewProduct) =>
- *     fetch('/api/products', {
- *       method: 'POST',
- *       body: JSON.stringify(product)
- *     }).then(r => r.json()),
- *   onSuccess: () => {
- *     alert('Product created!')
- *   }
- * })
+ * import { QueryClient } from '@tanstack/react-query'
+ * import { QueryClientProvider, useMutation } from '@las/integrations'
  *
- * const handleSubmit = (product: NewProduct) => {
- *   createProduct$.mutate(product)
+ * // QueryClient를 생성하고 Provider로 제공
+ * const queryClient = new QueryClient()
+ *
+ * function App() {
+ *   return (
+ *     <QueryClientProvider client={queryClient}>
+ *       <YourApp />
+ *     </QueryClientProvider>
+ *   )
  * }
  *
- * // Observable 파라미터와 함께 사용
- * const formData$ = useObservable({ name: '', price: 0 })
+ * // 컴포넌트에서 사용
+ * function YourComponent() {
+ *   const createProduct$ = useMutation({
+ *     mutationFn: (product: NewProduct) =>
+ *       fetch('/api/products', {
+ *         method: 'POST',
+ *         body: JSON.stringify(product)
+ *       }).then(r => r.json()),
+ *     onSuccess: () => {
+ *       alert('Product created!')
+ *     }
+ *   })
  *
- * // formData$가 변경되어도 mutationFn이 최신 값을 참조
- * const createProduct$ = useMutation({
- *   mutationFn: (data: ProductData) => api.createProduct(data)
- * })
- *
- * // .get()으로 값 추출하여 mutate
- * createProduct$.mutate(formData$.get())
- *
- * // 또는 반응형으로 처리
- * useObserveEffect(() => {
- *   if (formData$.shouldSubmit.get()) {
- *     createProduct$.mutate({
- *       name: formData$.name.get(),
- *       price: formData$.price.get()
- *     })
+ *   const handleSubmit = (product: NewProduct) => {
+ *     createProduct$.mutate(product)
  *   }
- * })
+ *
+ *   // Observable 파라미터와 함께 사용
+ *   const formData$ = useObservable({ name: '', price: 0 })
+ *
+ *   // .get()으로 값 추출하여 mutate
+ *   const handleFormSubmit = () => {
+ *     createProduct$.mutate(formData$.get())
+ *   }
+ * }
  * ```
  */
 export function useMutation<TData = unknown, TVariables = void, TContext = unknown>(
