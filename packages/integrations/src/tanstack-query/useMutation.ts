@@ -1,46 +1,47 @@
-"use client"
-import { useObservable, useObserve } from '@legendapp/state/react'
-import { batch } from '@legendapp/state'
-import { MutationKey, MutationObserver } from '@tanstack/react-query'
-import { useEffect, useRef } from 'react'
-import type { Observable } from '@legendapp/state'
-import { useQueryClient } from './useQueryClient'
+"use client";
+import { useMount, useObservable, useObserve } from "@legendapp/state/react";
+import { MutationKey, MutationObserver } from "@tanstack/query-core";
+import { useRef } from "react";
+import type { Observable } from "@legendapp/state";
+import { useQueryClient } from "./useQueryClient";
 
 export interface UseMutationOptions<TData = unknown, TVariables = void, TContext = unknown> {
-  mutationKey?: MutationKey
-  mutationFn: (variables: TVariables) => Promise<TData>
-  onMutate?: (variables: TVariables) => TContext | Promise<TContext>
-  onSuccess?: (data: TData, variables: TVariables, context: TContext | undefined) => void | Promise<void>
-  onError?: (error: Error, variables: TVariables, context: TContext | undefined) => void | Promise<void>
+  mutationKey?: MutationKey;
+  mutationFn: (variables: TVariables) => Promise<TData>;
+  onMutate?: (variables: TVariables) => TContext | Promise<TContext>;
+  onSuccess?: (data: TData, variables: TVariables, context: TContext | undefined) => void | Promise<void>;
+  onError?: (error: Error, variables: TVariables, context: TContext | undefined) => void | Promise<void>;
   onSettled?: (
     data: TData | undefined,
     error: Error | null,
     variables: TVariables,
     context: TContext | undefined
-  ) => void | Promise<void>
+  ) => void | Promise<void>;
 }
 
 export interface MutationState<TData = unknown, TVariables = void, TContext = unknown> {
-  data: TData | undefined
-  error: Error | null
-  status: 'idle' | 'pending' | 'error' | 'success'
-  isIdle: boolean
-  isPending: boolean
-  isPaused: boolean
-  isSuccess: boolean
-  isError: boolean
-  failureCount: number
-  failureReason: Error | null
-  submittedAt: number
-  variables: TVariables | undefined
-  context: TContext | undefined
+  data: TData | undefined;
+  error: Error | null;
+  status: "idle" | "pending" | "error" | "success";
+  isIdle: boolean;
+  isPending: boolean;
+  isPaused: boolean;
+  isSuccess: boolean;
+  isError: boolean;
+  failureCount: number;
+  failureReason: Error | null;
+  submittedAt: number;
+  variables: TVariables | undefined;
+  context: TContext | undefined;
+
+  mutate: (variables: TVariables) => void;
+  mutateAsync: (variables: TVariables) => Promise<TData>;
+  reset: () => void;
 }
 
 /**
  * TanStack Query Mutation과 Legend-App-State를 연결하는 커스텀 훅
  * MutationObserver를 사용하여 뮤테이션 상태를 observable로 관리합니다.
- *
- * Observable 값을 파라미터로 받을 수 있으며, 변경 시 자동으로 옵션이 업데이트됩니다.
  *
  * @example
  * ```tsx
@@ -74,31 +75,22 @@ export interface MutationState<TData = unknown, TVariables = void, TContext = un
  *   const handleSubmit = (product: NewProduct) => {
  *     createProduct$.mutate(product)
  *   }
- *
- *   // Observable 파라미터와 함께 사용
- *   const formData$ = useObservable({ name: '', price: 0 })
- *
- *   // .get()으로 값 추출하여 mutate
- *   const handleFormSubmit = () => {
- *     createProduct$.mutate(formData$.get())
- *   }
  * }
  * ```
  */
 export function useMutation<TData = unknown, TVariables = void, TContext = unknown>(
   options: UseMutationOptions<TData, TVariables, TContext>
-): Observable<MutationState<TData, TVariables, TContext>> & {
-  mutate: (variables: TVariables) => void
-  mutateAsync: (variables: TVariables) => Promise<TData>
-  reset: () => void
-} {
-  const queryClient = useQueryClient()
+): Observable<MutationState<TData, TVariables, TContext>> {
+  const queryClient = useQueryClient();
 
-  // Observable 상태 초기화
+  // Observer는 한 번만 생성
+  const observerRef = useRef<MutationObserver<TData, Error, TVariables, TContext> | null>(null);
+
+  // Observable 상태 초기화 (mutate/mutateAsync/reset는 별도 함수로 분리 - observable 안에 넣으면 Observable<Function>이 됨)
   const state$ = useObservable({
     data: undefined as TData | undefined,
     error: null as Error | null,
-    status: 'idle' as 'idle' | 'pending' | 'error' | 'success',
+    status: "idle" as "idle" | "pending" | "error" | "success",
     isIdle: true,
     isPending: false,
     isPaused: false,
@@ -109,10 +101,24 @@ export function useMutation<TData = unknown, TVariables = void, TContext = unkno
     submittedAt: 0,
     variables: undefined as TVariables | undefined,
     context: undefined as TContext | undefined,
-  })
-
-  // Observer는 한 번만 생성
-  const observerRef = useRef<MutationObserver<TData, Error, TVariables, TContext> | null>(null)
+    mutate(variables: TVariables) {
+      observerRef.current?.mutate(variables);
+    },
+    mutateAsync(variables: TVariables): Promise<TData> {
+      if (observerRef.current) {
+        return new Promise((resolve, reject) => {
+          observerRef.current!.mutate(variables, {
+            onSuccess: (data) => resolve(data),
+            onError: (error) => reject(error),
+          });
+        });
+      }
+      throw new Error("Mutation not initialized");
+    },
+    reset() {
+      observerRef.current?.reset();
+    },
+  });
 
   if (!observerRef.current) {
     observerRef.current = new MutationObserver<TData, Error, TVariables, TContext>(queryClient, {
@@ -122,90 +128,52 @@ export function useMutation<TData = unknown, TVariables = void, TContext = unkno
       onSuccess: options.onSuccess,
       onError: options.onError,
       onSettled: options.onSettled,
-    })
+    });
   }
 
   // useObserve로 options 변화 추적
-  // Observable 값이 변경되면 즉시 setOptions 호출
   useObserve(() => {
-    const resolvedOptions = {
+    observerRef.current?.setOptions({
       mutationKey: options.mutationKey,
       mutationFn: options.mutationFn,
       onMutate: options.onMutate,
       onSuccess: options.onSuccess,
       onError: options.onError,
       onSettled: options.onSettled,
-    }
-
-    observerRef.current?.setOptions(resolvedOptions)
-  })
+    });
+  });
 
   // 구독은 한 번만 설정 (React lifecycle)
-  useEffect(() => {
-    const observer = observerRef.current
-    if (!observer) return
+  useMount(() => {
+    const observer = observerRef.current;
+    if (!observer) return;
 
     const unsubscribe = observer.subscribe((result) => {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const s = state$ as any
-      batch(() => {
-        s.data.set(result.data)
-        s.error.set(result.error)
-        s.status.set(result.status)
-        s.isIdle.set(result.isIdle)
-        s.isPending.set(result.isPending)
-        s.isPaused.set(result.isPaused)
-        s.isSuccess.set(result.isSuccess)
-        s.isError.set(result.isError)
-        s.failureCount.set(result.failureCount)
-        s.failureReason.set(result.failureReason)
-        s.submittedAt.set(result.submittedAt)
-        s.variables.set(result.variables)
-        s.context.set(result.context)
-      })
-    })
+      state$.assign({
+        data: result.data,
+        error: result.error ?? null,
+        status: result.status,
+        isIdle: result.isIdle,
+        isPending: result.isPending,
+        isPaused: result.isPaused,
+        isSuccess: result.isSuccess,
+        isError: result.isError,
+        failureCount: result.failureCount,
+        failureReason: result.failureReason ?? null,
+        submittedAt: result.submittedAt,
+        variables: result.variables,
+        context: result.context,
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      } as any);
+    });
 
     return () => {
-      unsubscribe()
-    }
+      unsubscribe();
+    };
     // state$는 stable하므로 의존성에 불필요
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [])
+  });
 
-  // 함수들을 별도로 반환
-  const mutate = (variables: TVariables) => {
-    if (observerRef.current) {
-      observerRef.current.mutate(variables)
-    }
-  }
-
-  const mutateAsync = (variables: TVariables): Promise<TData> => {
-    if (observerRef.current) {
-      return new Promise((resolve, reject) => {
-        observerRef.current!.mutate(variables, {
-          onSuccess: (data) => resolve(data),
-          onError: (error) => reject(error),
-        })
-      })
-    }
-    throw new Error('Mutation not initialized')
-  }
-
-  const reset = () => {
-    if (observerRef.current) {
-      observerRef.current.reset()
-    }
-  }
-
-  // Observable과 함수를 별도로 반환 (Object.assign 사용하지 않음)
-  return {
-    ...state$,
-    mutate,
-    mutateAsync,
-    reset,
-  } as Observable<MutationState<TData, TVariables, TContext>> & {
-    mutate: (variables: TVariables) => void
-    mutateAsync: (variables: TVariables) => Promise<TData>
-    reset: () => void
-  }
+  return state$;
 }
