@@ -26,6 +26,7 @@
     "zustand"
   ],
   "dependencies": {
+    "@las/utils": "workspace:*",
     "@tanstack/query-core": "^5.90.20"
   },
   "peerDependencies": {

@@ -94,6 +94,9 @@ importers:
 
   packages/integrations:
     dependencies:
+      '@las/utils':
+        specifier: workspace:*
+        version: link:../utils
       '@tanstack/query-core':
         specifier: ^5.90.20
         version: 5.90.20

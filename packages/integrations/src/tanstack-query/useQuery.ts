@@ -5,6 +5,7 @@ import { isObservable } from "@legendapp/state";
 import { QueryKey, QueryObserver } from "@tanstack/query-core";
 import { useRef } from "react";
 import type { Observable } from "@legendapp/state";
+import { get, type MaybeObservable } from "@las/utils";
 import { useQueryClient } from "./useQueryClient";
 
 /**
@@ -25,13 +26,13 @@ function serializeQueryKey(queryKey: QueryKey): string {
 export interface UseQueryOptions<TData = unknown> {
   queryKey: QueryKey;
   queryFn: () => Promise<TData>;
-  enabled?: boolean;
-  staleTime?: number;
-  gcTime?: number;
-  retry?: number | boolean;
-  refetchOnWindowFocus?: boolean;
-  refetchOnMount?: boolean;
-  refetchOnReconnect?: boolean;
+  enabled?: MaybeObservable<boolean>;
+  staleTime?: MaybeObservable<number>;
+  gcTime?: MaybeObservable<number>;
+  retry?: MaybeObservable<number | boolean>;
+  refetchOnWindowFocus?: MaybeObservable<boolean>;
+  refetchOnMount?: MaybeObservable<boolean>;
+  refetchOnReconnect?: MaybeObservable<boolean>;
   /**
    * Set this to `true` to throw errors to the nearest error boundary.
    * Set to a function to control which errors should be thrown.
@@ -72,6 +73,8 @@ export interface QueryState<TData = unknown> {
   failureCount: number;
   failureReason: Error | null;
   errorUpdateCount: number;
+
+  refetch: () => void;
 }
 
 /**
@@ -126,13 +129,16 @@ export interface QueryState<TData = unknown> {
  * ```
  */
 export function useQuery<TData = unknown>(
-  options: UseQueryOptions<TData>,
-): Observable<QueryState<TData>> & {
-  state$: Observable<QueryState<TData>>;
-  refetch: () => void;
-} {
+  options: MaybeObservable<UseQueryOptions<TData>>,
+): Observable<QueryState<TData>> {
   const queryClient = useQueryClient();
+  // Observer는 한 번만 생성
+  const observerRef = useRef<QueryObserver<TData, Error> | null>(null);
+  const previousQueryKeyRef = useRef<string | null>(null);
   // const isServer = typeof window === "undefined";
+
+  // options 자체가 Observable인 경우 초기 스냅샷 추출 (최초 1회용)
+  const initialOptions = get(options);
 
   // Observable 상태 초기화
   const state$ = useObservable({
@@ -154,54 +160,56 @@ export function useQuery<TData = unknown>(
     isPlaceholderData: false,
     isFetched: false,
     isFetchedAfterMount: false,
-    isEnabled: options.enabled ?? true,
+    isEnabled: get(initialOptions.enabled) ?? true,
     dataUpdatedAt: 0,
     errorUpdatedAt: 0,
     failureCount: 0,
     failureReason: null as Error | null,
     errorUpdateCount: 0,
+    refetch() {
+      observerRef.current?.refetch();
+    },
   });
 
-  // Observer는 한 번만 생성
-  const observerRef = useRef<QueryObserver<TData, Error> | null>(null);
-  const previousQueryKeyRef = useRef<string | null>(null);
-
   if (!observerRef.current) {
-    const initialQueryKeyString = serializeQueryKey(options.queryKey);
+    const initialQueryKeyString = serializeQueryKey(initialOptions.queryKey);
     previousQueryKeyRef.current = initialQueryKeyString;
     observerRef.current = new QueryObserver<TData, Error>(queryClient, {
       queryKey: [initialQueryKeyString],
-      queryFn: options.queryFn,
-      enabled: options.enabled ?? true,
-      staleTime: options.staleTime,
-      gcTime: options.gcTime,
-      retry: options.retry,
-      refetchOnWindowFocus: options.refetchOnWindowFocus,
-      refetchOnMount: options.refetchOnMount,
-      refetchOnReconnect: options.refetchOnReconnect,
+      queryFn: initialOptions.queryFn,
+      enabled: get(initialOptions.enabled) ?? true,
+      staleTime: get(initialOptions.staleTime),
+      gcTime: get(initialOptions.gcTime),
+      retry: get(initialOptions.retry),
+      refetchOnWindowFocus: get(initialOptions.refetchOnWindowFocus),
+      refetchOnMount: get(initialOptions.refetchOnMount),
+      refetchOnReconnect: get(initialOptions.refetchOnReconnect),
     });
   }
 
   // useObserve로 options 변화 추적 (렌더링 중 동기 실행)
-  // Observable 값이 변경되면 즉시 setOptions 호출
+  // options 자체가 Observable이면 get(options)로 추적,
+  // 각 필드가 Observable이면 get(field)로 추적
   useObserve(() => {
+    const resolved = get(options);
+
     // options 객체를 직렬화하면서 Observable 값을 추출
     // serializeQueryKey의 replacer에서 .get()을 호출하므로 useObserve가 추적
-    const queryKeyString = serializeQueryKey(options.queryKey);
+    const queryKeyString = serializeQueryKey(resolved.queryKey);
 
     // queryKey가 변경되었는지 확인
     const hasQueryKeyChanged = previousQueryKeyRef.current !== queryKeyString;
 
     observerRef.current?.setOptions({
       queryKey: [queryKeyString] as QueryKey,
-      queryFn: options.queryFn,
-      enabled: options.enabled ?? true,
-      staleTime: options.staleTime,
-      gcTime: options.gcTime,
-      retry: options.retry,
-      refetchOnWindowFocus: options.refetchOnWindowFocus,
-      refetchOnMount: options.refetchOnMount,
-      refetchOnReconnect: options.refetchOnReconnect,
+      queryFn: resolved.queryFn,
+      enabled: get(resolved.enabled) ?? true,
+      staleTime: get(resolved.staleTime),
+      gcTime: get(resolved.gcTime),
+      retry: get(resolved.retry),
+      refetchOnWindowFocus: get(resolved.refetchOnWindowFocus),
+      refetchOnMount: get(resolved.refetchOnMount),
+      refetchOnReconnect: get(resolved.refetchOnReconnect),
     });
 
     // queryKey가 변경되면 refetch 트리거
@@ -255,32 +263,5 @@ export function useQuery<TData = unknown>(
     // eslint-disable-next-line react-hooks/exhaustive-deps
   });
 
-  const refetch = () => {
-    observerRef.current?.refetch();
-  };
-
-  // // Return a Proxy that:
-  // // 1. Delegates field accesses to state$ (so result.isPending.get() works for tests)
-  // // 2. Exposes state$ directly (so result.state$ works for page usage)
-  // // 3. Exposes refetch directly
-  // const proxyResult = new Proxy(
-  //   { state$, refetch } as {
-  //     state$: Observable<QueryState<TData>>;
-  //     refetch: () => void;
-  //   },
-  //   {
-  //     get(target, prop: string | symbol) {
-  //       if (prop === "state$") return target.state$;
-  //       if (prop === "refetch") return target.refetch;
-  //       // Delegate all observable property accesses to state$
-  //       // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  //       return (target.state$ as any)[prop];
-  //     },
-  //   },
-  // );
-
-  return {
-    state$,
-    refetch,
-  } as any;
+  return state$;
 }
