@@ -41,6 +41,9 @@ export interface UseQueryOptions<TData = unknown> {
   /**
    * Set this to `true` to enable React Suspense mode.
    * The hook will throw a promise while fetching, suspending the component.
+   *
+   * Note: Requires a React Suspense boundary in the component tree.
+   * The query state is still available as an observable when not suspended.
    */
   suspense?: boolean;
 }
@@ -115,6 +118,7 @@ export interface QueryState<TData = unknown> {
  *   })
  *   // filter$가 변경되면 자동으로 refetch!
  *
+ *
  *   // 렌더링
  *   return (
  *     <Show if={() => products$.isSuccess.get()}>
@@ -135,12 +139,11 @@ export function useQuery<TData = unknown>(
   // Observer는 한 번만 생성
   const observerRef = useRef<QueryObserver<TData, Error> | null>(null);
   const previousQueryKeyRef = useRef<string | null>(null);
-  // const isServer = typeof window === "undefined";
 
   // options 자체가 Observable인 경우 초기 스냅샷 추출 (최초 1회용)
   const initialOptions = get(options);
 
-  // Observable 상태 초기화
+  // Observable 상태 초기화 (refetch는 별도 함수로 분리 - observable 안에 넣으면 Observable<Function>이 됨)
   const state$ = useObservable({
     data: undefined as TData | undefined,
     error: null as Error | null,
@@ -184,6 +187,7 @@ export function useQuery<TData = unknown>(
       refetchOnWindowFocus: get(initialOptions.refetchOnWindowFocus),
       refetchOnMount: get(initialOptions.refetchOnMount),
       refetchOnReconnect: get(initialOptions.refetchOnReconnect),
+      throwOnError: initialOptions.throwOnError as never,
     });
   }
 
@@ -210,6 +214,7 @@ export function useQuery<TData = unknown>(
       refetchOnWindowFocus: get(resolved.refetchOnWindowFocus),
       refetchOnMount: get(resolved.refetchOnMount),
       refetchOnReconnect: get(resolved.refetchOnReconnect),
+      throwOnError: resolved.throwOnError as never,
     });
 
     // queryKey가 변경되면 refetch 트리거
@@ -227,7 +232,7 @@ export function useQuery<TData = unknown>(
 
     const unsubscribe = observer.subscribe((result) => {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      state$.set({
+      state$.assign({
         data: result.data,
         error: result.error ?? null,
         status: result.status,

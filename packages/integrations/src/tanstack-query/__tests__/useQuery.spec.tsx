@@ -1079,8 +1079,7 @@ describe("useQuery", () => {
 
       renderHook(
         () => {
-          const result = useQuery({ queryKey: ["test"], queryFn });
-          const state$ = result.state$;
+          const state$ = useQuery({ queryKey: ["test"], queryFn });
           useObserve(state$, () => {
             if (state$.isSuccess.get()) {
               onStateChange(state$.data.get());
@@ -1151,9 +1150,9 @@ describe("useQuery", () => {
 
     it("should trigger useObserve on refetch with new data", async () => {
       let count = 0;
-      const queryFn = vi.fn().mockImplementation(() =>
-        Promise.resolve(`data-${++count}`),
-      );
+      const queryFn = vi
+        .fn()
+        .mockImplementation(() => Promise.resolve(`data-${++count}`));
       const { wrapper } = createWrapper();
       const onData = vi.fn();
 
