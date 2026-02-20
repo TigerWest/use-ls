@@ -2,7 +2,7 @@ import { useEl$ } from "../useEl$";
 import { useIntersectionObserver } from ".";
 import { Computed, useObservable } from "@legendapp/state/react";
 
-const DEFAULT_ROOT_MARGIN = "0px";
+const DEFAULT_ROOT_MARGIN = 0;
 
 const btnStyle: React.CSSProperties = {
   padding: "3px 10px",
@@ -20,12 +20,16 @@ export default function UseIntersectionObserverDemo() {
   const isVisible$ = useObservable(false);
   const rootMargin$ = useObservable(DEFAULT_ROOT_MARGIN);
 
+  const marginString$ = useObservable(() => {
+    const m = Number(rootMargin$.get());
+    return `${isNaN(m) ? 0 : m}px`;
+  });
   const { isActive, pause, resume } = useIntersectionObserver(
     el$,
     (entries) => {
       isVisible$.set(entries[0]?.isIntersecting ?? false);
     },
-    { threshold: 0.5, rootMargin: rootMargin$, root: containerEl$ },
+    { threshold: 0.5, rootMargin: marginString$, root: containerEl$ },
   );
 
   return (
@@ -88,7 +92,8 @@ export default function UseIntersectionObserverDemo() {
           {() => (
             <input
               value={rootMargin$.get()}
-              onChange={(e) => rootMargin$.set(e.target.value)}
+              type="number"
+              onChange={(e) => rootMargin$.set(Number(e.target.value))}
               style={{
                 fontFamily: "monospace",
                 fontSize: "13px",
