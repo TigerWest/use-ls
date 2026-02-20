@@ -8,8 +8,7 @@ export function useSupported(callback: () => unknown): UseSupportedReturn {
   const isMounted = useIsMounted();
 
   return useObservable(() => {
-    // eslint-disable-next-line ts/no-unused-expressions
-    isMounted.get();
+    if (!isMounted.get()) return false;
     return Boolean(callback());
   });
 }
