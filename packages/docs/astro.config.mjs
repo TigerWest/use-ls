@@ -3,9 +3,18 @@ import mdx from '@astrojs/mdx'
 import react from '@astrojs/react'
 import starlight from '@astrojs/starlight'
 import { defineConfig } from 'astro/config'
+import { fileURLToPath } from 'node:url'
 
 // https://astro.build/config
 export default defineConfig({
+  vite: {
+    resolve: {
+      alias: {
+        '@demos/utils': fileURLToPath(new URL('../utils/src', import.meta.url)),
+        '@demos/integrations': fileURLToPath(new URL('../integrations/src', import.meta.url)),
+      },
+    },
+  },
   integrations: [
     starlight({
       title: 'legendapp-state-utils',

@@ -358,8 +358,8 @@ async function transformAndWriteDocFiles(docFiles: DocFile[]): Promise<void> {
       changelog,
     })
 
-    // --- Check for demo file ---
-    const demoPath = path.join(ASTRO_ROOT, 'src', 'demos', doc.package, `${doc.filename}.tsx`)
+    // --- Check for demo file (co-located with source) ---
+    const demoPath = path.join(path.dirname(doc.sourcePath), 'demo.tsx')
     let hasDemo = false
     try {
       await fs.access(demoPath)
@@ -398,14 +398,24 @@ async function transformAndWriteDocFiles(docFiles: DocFile[]): Promise<void> {
     let finalContent = `---\n${frontmatterLines.join('\n')}\n---\n`
 
     if (hasDemo) {
-      finalContent += `\nimport Demo from '@demos/${doc.package}/${doc.filename}'\n`
+      const packageSrcDir = path.join(PACKAGES_ROOT, 'packages', doc.package, 'src')
+      const demoRelPath = path.relative(packageSrcDir, path.dirname(demoPath)).split(path.sep).join('/')
+      const demoImportPath = `@demos/${doc.package}/${demoRelPath}/demo`
+      finalContent += `\nimport Demo from '${demoImportPath}'\n`
     }
 
-    finalContent += `\n${body.trim()}\n`
-
+    let processedBody = body.trim()
     if (hasDemo) {
-      finalContent += `\n\n## Demo\n\n<Demo />\n`
+      // Inject <Demo client:load /> into the ## Demo section in the source body
+      const sections = processedBody.split(/(?=^## )/m)
+      const demoIdx = sections.findIndex(s => /^## Demo/.test(s))
+      if (demoIdx !== -1) {
+        sections[demoIdx] = '## Demo\n\n<Demo client:load />\n\n'
+      }
+      processedBody = sections.join('')
     }
+
+    finalContent += `\n${processedBody}\n`
 
     if (autoSections) {
       finalContent += `\n\n${autoSections}\n`

@@ -7,6 +7,7 @@
     "packages/*"
   ],
   "scripts": {
+    "docs:dev": "pnpm --filter docs docs:dev",
     "build": "pnpm -r build",
     "dev": "pnpm -r dev",
     "test": "vitest",

@@ -35,6 +35,9 @@ importers:
       '@astrojs/starlight':
         specifier: ^0.37.6
         version: 0.37.6(astro@5.17.2)
+      '@legendapp/state':
+        specifier: 3.0.0-beta.44
+        version: 3.0.0-beta.44(react@19.2.3)
       astro:
         specifier: ^5.6.1
         version: 5.17.2(tsx@4.21.0)(typescript@5.9.3)

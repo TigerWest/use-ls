@@ -1,5 +1,5 @@
 {
-  "name": "",
+  "name": "docs",
   "type": "module",
   "version": "0.0.1",
   "scripts": {
@@ -17,6 +17,7 @@
     "@astrojs/mdx": "^4.0.0",
     "@astrojs/react": "^4.0.0",
     "@astrojs/starlight": "^0.37.6",
+    "@legendapp/state": "^2.1.15",
     "astro": "^5.6.1",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",

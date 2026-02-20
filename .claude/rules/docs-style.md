@@ -18,19 +18,20 @@ Documentation is written in English.
 ```
 packages/
   utils/src/{category}/{functionName}/index.md
-  integrations/src/{libraryName}/{hookName}.md
+  integrations/src/{libraryName}/{hookName}/index.md
 ```
 
 Examples:
+
 - `packages/utils/src/function/get/index.md`
-- `packages/integrations/src/tanstack-query/useQuery.md`
+- `packages/integrations/src/tanstack-query/useQuery/index.md`
 
 ## Frontmatter (Required/Optional)
 
 ```yaml
 ---
-title: get                          # Required: function/hook name
-category: Observable Utilities      # Optional: for sidebar group display
+title: get # Required: function/hook name
+category: Observable Utilities # Optional: for sidebar group display
 ---
 ```
 
@@ -38,10 +39,11 @@ Prohibited field: `order` (not used)
 
 ## Body Structure
 
-```markdown
+````markdown
 First paragraph: feature description (start immediately without h1 title)
 
 ## Demo
+
 The demo is working code that is imported and used in mdx.
 If there is a demonstrable example, write a demo.tsx and import it to enable interaction.
 
@@ -52,9 +54,9 @@ You may include multiple code examples and descriptions based on the code.
 ```typescript
 // Actual usage example code
 ```
+````
+
 If there are many usage patterns, you may add supplementary descriptions using ### (h3).
-
-
 
 ```
 
@@ -77,10 +79,12 @@ If there are many usage patterns, you may add supplementary descriptions using #
 ## Demo Files (Optional)
 
 If there is an interactive demo, add a `.tsx` file:
+packages/
+  utils/src/{category}/{functionName}/demo.tsx
+  integrations/src/{libraryName}/{hookName}/demo.tsx
+```
 
-```
-packages/docs/src/demos/{package}/{functionName}.tsx
-```
+````
 
 If a demo file exists, `collect-docs.ts` automatically generates it as `.mdx` and imports the Demo component.
 
@@ -89,6 +93,6 @@ If a demo file exists, `collect-docs.ts` automatically generates it as `.mdx` an
 ```bash
 cd packages/docs
 pnpm tsx scripts/collect-docs.ts
-```
+````
 
 After modifying documentation, you must run this, or it will be reflected automatically in `pnpm dev` (watch mode).
