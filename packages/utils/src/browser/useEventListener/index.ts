@@ -198,7 +198,11 @@ export function useEventListener(...args: any[]): () => void {
             typeof (val as any).valueOf === "function"
               ? ((val as any).valueOf() as unknown) ?? val
               : val;
-          return target instanceof EventTarget ? [target as EventTarget] : [];
+          // Duck-type check: works with real EventTargets and test mocks alike.
+          if (typeof (target as any).addEventListener === "function") {
+            return [target as EventTarget];
+          }
+          return [];
         }
         // Raw EventTarget (Window, Document, HTMLElement, etc.)
         return [item as EventTarget];
