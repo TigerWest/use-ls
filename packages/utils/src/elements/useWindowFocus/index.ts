@@ -2,6 +2,7 @@
 import type { Observable } from "@legendapp/state";
 import { useObservable } from "@legendapp/state/react";
 import { useMount } from "@legendapp/state/react";
+import { useEventListener } from "../../browser/useEventListener";
 
 /*@__NO_SIDE_EFFECTS__*/
 export function useWindowFocus(): Observable<boolean> {
@@ -10,21 +11,11 @@ export function useWindowFocus(): Observable<boolean> {
   const focused$ = useObservable<boolean>(false);
 
   useMount(() => {
-    if (typeof window === "undefined") return;
-
     focused$.set(document.hasFocus());
-
-    const onFocus = () => focused$.set(true);
-    const onBlur = () => focused$.set(false);
-
-    window.addEventListener("focus", onFocus, { passive: true });
-    window.addEventListener("blur", onBlur, { passive: true });
-
-    return () => {
-      window.removeEventListener("focus", onFocus);
-      window.removeEventListener("blur", onBlur);
-    };
   });
+
+  useEventListener("focus", () => focused$.set(true), { passive: true });
+  useEventListener("blur", () => focused$.set(false), { passive: true });
 
   return focused$;
 }
