@@ -1,6 +1,6 @@
 "use client";
-import { isObservable } from "@legendapp/state";
-import { useObserve } from "@legendapp/state/react";
+import { isObservable, type Observable } from "@legendapp/state";
+import { useObservable, useObserve } from "@legendapp/state/react";
 import { useEffect, useRef } from "react";
 import { isEl$, type MaybeElement } from "../../elements/useEl$";
 import { normalizeTargets } from "../../shared/normalizeTargets";
@@ -28,17 +28,6 @@ function isEventNameArg(v: unknown): boolean {
     );
   }
   return false;
-}
-
-/**
- * Returns true if the target argument contains at least one reactive element
- * (El$ or Observable<Element>) that requires useObserve tracking.
- */
-function hasMaybeElementTarget(v: unknown): boolean {
-  const items = Array.isArray(v) ? v : [v];
-  return items
-    .filter((i) => i != null)
-    .some((i) => isEl$(i) || isObservable(i));
 }
 
 // ---------------------------------------------------------------------------
@@ -109,7 +98,22 @@ export function useEventListener<E extends keyof HTMLElementEventMap>(
  * Register using addEventListener on mounted, and removeEventListener
  * automatically on unmounted.
  *
- * Overload 5: Generic `EventTarget` fallback.
+ * Overload 5: Observable<EventTarget> — reactive target (e.g.
+ * Observable<MediaQueryList>, El$<HTMLElement>, etc.).
+ * The observer re-fires whenever the observable value changes.
+ */
+export function useEventListener<EventType = Event>(
+  target: Observable<any>,
+  event: Arrayable<string>,
+  listener: Arrayable<GeneralEventListener<EventType>>,
+  options?: boolean | AddEventListenerOptions,
+): () => void;
+
+/**
+ * Register using addEventListener on mounted, and removeEventListener
+ * automatically on unmounted.
+ *
+ * Overload 6: Generic `EventTarget` fallback.
  */
 export function useEventListener<EventType = Event>(
   target: EventTarget | null | undefined,
@@ -142,74 +146,75 @@ export function useEventListener(...args: any[]): () => void {
   listenersRef.current = toArray(rawListener);
 
   // Stable forwarder — one function reference per hook instance, created once.
-  // Delegates to listenersRef.current so state-dependent listeners never go stale.
-  // Mirrors useResizeObserver's `(...args) => callbackRef.current(...args)` pattern.
   const forwarder = useRef((ev: Event) => {
     listenersRef.current.forEach((l) => l(ev));
   });
 
   // Options ref prevents recreating listeners when only options change.
-  // A clone is made inside setup() so the stored remove-fn stays consistent.
   const optionsRef = useRef(rawOptions);
   optionsRef.current = rawOptions;
 
-  // Guards useObserve's initial synchronous run (before DOM is committed) from
-  // calling setup(). Only useEffect triggers the first setup, ensuring elements
-  // are available in the DOM before listeners are attached.
-  const mountedRef = useRef(false);
+  // Observable mount flag — lets useObserve react when component mounts.
+  const mounted$ = useObservable(false);
 
   // Array of removeEventListener thunks for the currently active registrations.
   const cleanupsRef = useRef<Array<() => void>>([]);
 
-  /**
-   * Resolves the raw target argument to a flat EventTarget[].
-   *
-   * - No target: `window` (SSR-safe)
-   * - null/undefined: [] (skip registration)
-   * - El$ / Observable<Element>: unwrapped via normalizeTargets (registers
-   *   reactive tracking when called inside useObserve)
-   * - Window, Document, plain HTMLElement, or any other EventTarget: used as-is
-   */
-  const resolveTargets = (): EventTarget[] => {
-    if (!hasTarget) {
-      return typeof window !== "undefined" ? [window] : [];
-    }
-    if (rawTarget == null) return [];
-
-    const items: unknown[] = Array.isArray(rawTarget) ? rawTarget : [rawTarget];
-    return items.flatMap((item) => {
-      if (item == null) return [];
-      // Reactive element references — normalizeTargets calls .get() which
-      // registers the observable dependency inside useObserve.
-      if (isEl$(item) || isObservable(item)) {
-        return normalizeTargets([item as MaybeElement]);
-      }
-      // Raw EventTarget (Window, Document, HTMLElement, etc.)
-      return [item as EventTarget];
-    });
-  };
-
-  const setup = () => {
-    // Remove previously registered listeners before re-registering.
+  // Single reactive observer: re-runs whenever mounted$ changes OR any
+  // observable target changes. Reading .get() inside this callback registers
+  // reactive dependencies, so listener setup/teardown is always in sync.
+  useObserve(() => {
+    // Teardown previous registrations before re-registering.
     cleanupsRef.current.forEach((fn) => fn());
     cleanupsRef.current = [];
 
-    const targets = resolveTargets();
+    // Only register listeners while the component is mounted.
+    if (!mounted$.get()) return;
+
+    // Resolve targets inline — reading .get() on observable targets registers
+    // them as reactive dependencies for this observer.
+    const targets: EventTarget[] = (() => {
+      if (!hasTarget) {
+        return typeof window !== "undefined" ? [window] : [];
+      }
+      if (rawTarget == null) return [];
+
+      const items: unknown[] = Array.isArray(rawTarget)
+        ? rawTarget
+        : [rawTarget];
+      return items.flatMap((item): EventTarget[] => {
+        if (item == null) return [];
+        // El$ references — normalizeTargets handles OpaqueObject.valueOf() unwrapping.
+        if (isEl$(item)) {
+          return normalizeTargets([item as MaybeElement]) as EventTarget[];
+        }
+        // Observable targets — .get() unwraps and registers reactive dependency.
+        // Supports Element, Document, MediaQueryList, or any EventTarget.
+        if (isObservable(item)) {
+          const val = (item as { get: () => unknown }).get();
+          if (val == null) return [];
+          // Unwrap OpaqueObject created by ObservableHint.opaque (has custom valueOf).
+          const target =
+            typeof (val as any).valueOf === "function"
+              ? ((val as any).valueOf() as unknown) ?? val
+              : val;
+          return target instanceof EventTarget ? [target as EventTarget] : [];
+        }
+        // Raw EventTarget (Window, Document, HTMLElement, etc.)
+        return [item as EventTarget];
+      });
+    })();
+
+    if (!targets.length) return;
+
     const events = toArray(rawEvent);
-    const listeners = listenersRef.current;
+    if (!events.length || !listenersRef.current.length) return;
 
-    if (!targets.length || !events.length || !listeners.length) return;
-
-    // Clone options object to prevent mutation after registration.
-    // Mirrors the VueUse implementation's `optionsClone` approach.
     const opts =
       typeof optionsRef.current === "object" && optionsRef.current !== null
         ? { ...optionsRef.current }
         : optionsRef.current;
 
-    // Register the stable forwarder (not the raw listener) so that
-    // removeEventListener can always use the same function reference,
-    // and so that state-dependent listeners never go stale between setups.
     const fn = forwarder.current;
     cleanupsRef.current = targets.flatMap((el) =>
       events.map((event) => {
@@ -217,40 +222,18 @@ export function useEventListener(...args: any[]): () => void {
         return () => el.removeEventListener(event, fn, opts);
       }),
     );
-  };
+  });
 
-  // Initial setup after DOM is committed; cleanup on unmount.
-  // useEffect is used directly (instead of useMount/useUnmount) because
-  // Legend-State's useEffectOnce delays cleanup via queueMicrotask in test
-  // environments, making synchronous post-unmount assertions unreliable.
+  // useEffect manages mount state only — no setup logic here.
   // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => {
-    mountedRef.current = true;
-    setup();
+    mounted$.set(true);
     return () => {
-      mountedRef.current = false;
+      mounted$.set(false);
       cleanupsRef.current.forEach((fn) => fn());
       cleanupsRef.current = [];
     };
   }, []);
-
-  // Re-run setup whenever observable targets (El$ or Observable<Element>) change.
-  // Reading normalizeTargets here registers observable dependencies so
-  // useObserve re-fires when a tracked target value changes.
-  // mountedRef guard prevents a redundant setup on the initial synchronous run.
-  useObserve(() => {
-    if (hasTarget && hasMaybeElementTarget(rawTarget)) {
-      const items = (
-        Array.isArray(rawTarget) ? rawTarget : [rawTarget]
-      ) as unknown[];
-      normalizeTargets(
-        items.filter(
-          (i) => i != null && (isEl$(i) || isObservable(i)),
-        ) as MaybeElement[],
-      );
-    }
-    if (mountedRef.current) setup();
-  });
 
   // Return a manual cleanup function for imperative removal.
   return () => {
