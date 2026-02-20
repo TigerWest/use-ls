@@ -1,7 +1,13 @@
 "use client";
 import type { Observable } from "@legendapp/state";
-import { useObservable, useMount } from "@legendapp/state/react";
+import {
+  useObservable,
+  useMount,
+  useObserveEffect,
+} from "@legendapp/state/react";
 import { useEventListener } from "../../browser/useEventListener";
+import { useMediaQuery } from "../../browser/useMediaQuery";
+import { useWhenMounted } from "../../function/useWhenMounted";
 
 export interface UseWindowSizeOptions {
   initialWidth?: number;
@@ -63,18 +69,21 @@ export function useWindowSize(
 
   useEventListener("resize", update, { passive: true });
 
-  const vp =
-    typeof window !== "undefined" && options?.type === "visual"
-      ? window.visualViewport
-      : null;
-  useEventListener(vp, "resize", update);
+  const vp$ = useWhenMounted(() =>
+    options?.type === "visual" ? window.visualViewport : null,
+  );
 
-  // TODO: change useMatchMedia
-  const mql =
-    typeof window !== "undefined" && options?.listenOrientation !== false
-      ? window.matchMedia("(orientation: portrait)")
-      : null;
-  useEventListener(mql as EventTarget | null, "change", update);
+  useEventListener(vp$, "resize", update);
+  const matches$ = useMediaQuery("(orientation: portrait)");
+  useObserveEffect(
+    matches$,
+    () => {
+      if (options?.listenOrientation !== false) {
+        update();
+      }
+    },
+    { immediate: false },
+  );
 
   return size$;
 }

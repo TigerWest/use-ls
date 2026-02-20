@@ -161,11 +161,36 @@ describe("useWindowSize()", () => {
     expect(addSpy).toHaveBeenCalledWith("(orientation: portrait)");
   });
 
-  it("listenOrientation: false skips matchMedia", () => {
-    const matchMediaSpy = vi.spyOn(window, "matchMedia");
+  it("listenOrientation: false does not update size on orientation change", () => {
+    let orientationListener: ((e: Event) => void) | null = null;
 
-    renderHook(() => useWindowSize({ listenOrientation: false }));
-    expect(matchMediaSpy).not.toHaveBeenCalled();
+    vi.stubGlobal("matchMedia", (_query: string) => ({
+      matches: false,
+      media: _query,
+      addEventListener: vi.fn((type: string, listener: EventListener) => {
+        if (type === "change") orientationListener = listener;
+      }),
+      removeEventListener: vi.fn(),
+      dispatchEvent: vi.fn(),
+    } as unknown as MediaQueryList));
+
+    const { result } = renderHook(() =>
+      useWindowSize({ listenOrientation: false }),
+    );
+
+    // Change innerWidth but do NOT dispatch a resize event
+    (window as any).innerWidth = 500;
+
+    act(() => {
+      // Trigger orientation change — should NOT call update() when listenOrientation: false
+      orientationListener?.({
+        type: "change",
+        matches: true,
+      } as unknown as MediaQueryListEvent);
+    });
+
+    // Size stays at 1024 because orientation change was ignored
+    expect(result.current.width.get()).toBe(1024);
   });
 
   it("removes resize listener on unmount", async () => {
