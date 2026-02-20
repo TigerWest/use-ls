@@ -7,7 +7,7 @@ import type { MaybeObservable } from "../../types";
  * A single observable-element target accepted by observer hooks.
  * Supports El$, Observable<Element|null>, and plain Element values.
  */
-export type MaybeTargetEl = El$<Element> | MaybeObservable<Element | null>;
+export type MaybeTargetEl = El$<any> | MaybeObservable<Element | null>;
 
 /**
  * Normalizes one or more observable-element targets into a plain Element[].

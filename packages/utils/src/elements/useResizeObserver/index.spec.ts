@@ -221,4 +221,89 @@ describe("useResizeObserver()", () => {
 
     expect(activeInstance.disconnected).toBe(true);
   });
+
+  it("does not create an observer when target is an empty array", () => {
+    renderHook(() => useResizeObserver([], vi.fn()));
+
+    const activeInstances = ResizeObserverMock.instances.filter(
+      (i) => i.observed.length > 0,
+    );
+    expect(activeInstances).toHaveLength(0);
+  });
+
+  it("does not create an observer when target is null", () => {
+    renderHook(() => useResizeObserver(null as any, vi.fn()));
+
+    const activeInstances = ResizeObserverMock.instances.filter(
+      (i) => i.observed.length > 0,
+    );
+    expect(activeInstances).toHaveLength(0);
+  });
+
+  it("stops observing old element and observes new element when El$ target changes", () => {
+    const elA = document.createElement("div");
+    const elB = document.createElement("div");
+    const cb = vi.fn();
+
+    const { result } = renderHook(() => {
+      const el$ = useEl$<HTMLDivElement>();
+      return { el$, ro: useResizeObserver(el$ as any, cb) };
+    });
+
+    // Assign elA first
+    act(() => result.current.el$(elA));
+
+    expect(
+      ResizeObserverMock.instances.find((i) => !i.disconnected && i.observed.includes(elA)),
+    ).toBeDefined();
+
+    // Switch to elB
+    act(() => result.current.el$(elB));
+
+    // elB should now be observed
+    expect(
+      ResizeObserverMock.instances.find((i) => !i.disconnected && i.observed.includes(elB)),
+    ).toBeDefined();
+
+    // elA should no longer be observed by any active instance
+    expect(
+      ResizeObserverMock.instances.find((i) => !i.disconnected && i.observed.includes(elA)),
+    ).toBeUndefined();
+  });
+
+  it("uses the latest callback without recreating the observer on re-render", () => {
+    const div = document.createElement("div");
+    const cb1 = vi.fn();
+    const cb2 = vi.fn();
+
+    const { rerender } = renderHook(
+      ({ cb }) => useResizeObserver(div, cb),
+      { initialProps: { cb: cb1 } },
+    );
+
+    const instance = ResizeObserverMock.instances.at(-1)!;
+
+    rerender({ cb: cb2 });
+
+    // Observer must NOT be recreated — same instance as before
+    expect(ResizeObserverMock.instances.at(-1)).toBe(instance);
+
+    // Triggering should invoke the latest callback (cb2), not the stale one (cb1)
+    act(() => instance.trigger(div));
+    expect(cb1).not.toHaveBeenCalled();
+    expect(cb2).toHaveBeenCalledOnce();
+  });
+
+  it("passes device-pixel-content-box box option to observe()", () => {
+    const div = document.createElement("div");
+    const observeSpy = vi.spyOn(ResizeObserverMock.prototype, "observe");
+
+    renderHook(() =>
+      useResizeObserver(div, vi.fn(), { box: "device-pixel-content-box" }),
+    );
+
+    expect(observeSpy).toHaveBeenCalledWith(div, {
+      box: "device-pixel-content-box",
+    });
+  });
 });
