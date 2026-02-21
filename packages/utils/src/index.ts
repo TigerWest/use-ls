@@ -8,6 +8,7 @@ export * from "./elements/useEl$";
 export * from "./elements/useResizeObserver";
 export * from "./elements/useMutationObserver";
 export * from "./elements/useIntersectionObserver";
+export * from "./elements/useDocumentVisibility";
 export * from "./elements/useWindowFocus";
 export * from "./elements/useWindowSize";
 
