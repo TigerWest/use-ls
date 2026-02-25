@@ -292,7 +292,8 @@ describe("useIntersectionObserver()", () => {
       useIntersectionObserver(wrapEl(el), vi.fn(), { root: root$ }),
     );
 
-    expect(MockIntersectionObserver).toHaveBeenCalledTimes(1);
+    // root is null — observer must not be created yet
+    expect(MockIntersectionObserver).not.toHaveBeenCalled();
     mockDisconnect.mockClear();
     MockIntersectionObserver.mockClear();
 
@@ -300,7 +301,8 @@ describe("useIntersectionObserver()", () => {
       root$.set(ObservableHint.opaque(rootB));
     });
 
-    expect(mockDisconnect).toHaveBeenCalledTimes(1);
+    // no old observer to disconnect; new one created with rootB
+    expect(mockDisconnect).not.toHaveBeenCalled();
     expect(MockIntersectionObserver).toHaveBeenCalledTimes(1);
     expect(MockIntersectionObserver).toHaveBeenCalledWith(
       expect.any(Function),

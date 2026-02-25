@@ -1,12 +1,12 @@
 import type { Observable } from "@legendapp/state";
-import { useObservable, useObserve } from "@legendapp/state/react";
+import { useObservable, useObserveEffect } from "@legendapp/state/react";
 import { useEffect, useRef } from "react";
-import { get } from "../../function/get";
-import type { MaybeObservable } from "../../types";
-import { getElement, isEl$, peekElement } from "../useEl$";
+import { useMayObservableOptions } from "../../function/useMayObservableOptions";
+import type { DeepMaybeObservable, MaybeObservable } from "../../types";
 import { isWindow } from "../../shared";
 import type { MaybeElement } from "../useEl$";
 import { normalizeTargets } from "../useResizeObserver";
+import { get } from "../../function/get";
 
 export interface UseIntersectionObserverOptions {
   /** Whether to start observing immediately on mount. Default: true */
@@ -14,7 +14,7 @@ export interface UseIntersectionObserverOptions {
   /** The element or document used as the viewport. Default: browser viewport */
   root?: MaybeElement;
   /** Margin around the root. Accepts CSS-style values. Default: "0px" */
-  rootMargin?: MaybeObservable<string>;
+  rootMargin?: string;
   /** Threshold(s) at which to trigger the callback. Default: 0 */
   threshold?: number | number[];
 }
@@ -52,12 +52,21 @@ export interface UseIntersectionObserverReturn {
 export function useIntersectionObserver(
   target: MaybeElement | MaybeElement[],
   callback: IntersectionObserverCallback,
-  options?: UseIntersectionObserverOptions,
+  options?: DeepMaybeObservable<UseIntersectionObserverOptions>,
 ): UseIntersectionObserverReturn {
+  const opts$ = useMayObservableOptions<UseIntersectionObserverOptions>(
+    options,
+    {
+      immediate: "peek",
+      threshold: "peek",
+      root: "get.element",
+      rootMargin: (value) => get(value as MaybeObservable<string | undefined>),
+    },
+  );
   const isSupported$ = useObservable<boolean>(
     typeof IntersectionObserver !== "undefined",
   );
-  const isActive$ = useObservable<boolean>(options?.immediate !== false);
+  const isActive$ = useObservable<boolean>(opts$.immediate.peek() !== false);
   const observerRef = useRef<IntersectionObserver | null>(null);
   const stoppedRef = useRef(false);
   const mountedRef = useRef(false);
@@ -69,49 +78,46 @@ export function useIntersectionObserver(
 
   const setup = () => {
     if (!isSupported$.peek() || !isActive$.peek()) return;
-
     cleanup();
 
-    let root: HTMLElement | Document | null | undefined = undefined;
-    if (options?.root !== undefined) {
-      const resolvedRoot = peekElement(options.root);
-      // Window is not a valid IntersectionObserver root — treat as default viewport (null)
-      root = isWindow(resolvedRoot) ? null : (resolvedRoot as HTMLElement | Document | null);
-      // El$ not yet mounted — skip setup until element is available
-      if (isEl$(options.root) && resolvedRoot === null) return;
-    }
-    const rootMargin = get(options?.rootMargin);
+    const rawRoot = opts$.root.peek();
+    const root =
+      rawRoot == null
+        ? (rawRoot as null | undefined)
+        : (() => {
+            const el = (
+              rawRoot as unknown as { valueOf(): HTMLElement | Document }
+            ).valueOf();
+            return isWindow(el as unknown) ? null : el;
+          })();
 
     observerRef.current = new IntersectionObserver(callback, {
       root: root ?? undefined,
-      rootMargin,
-      threshold: options?.threshold ?? 0,
+      rootMargin: opts$.rootMargin.peek() as string | undefined,
+      threshold: (opts$.threshold.peek() as number | number[] | undefined) ?? 0,
     });
 
     const targets = normalizeTargets(target);
     targets.forEach((el) => observerRef.current?.observe(el));
   };
 
-  // Initial setup after DOM is committed; cleanup on unmount.
   // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => {
     mountedRef.current = true;
-    setup();
     return () => {
       mountedRef.current = false;
       cleanup();
     };
   }, []);
 
-  // Re-run setup when reactive options (root, rootMargin), isActive$, or target changes.
-  // normalizeTargets(target) registers El$/Observable target dependencies for reactive tracking.
-  // mountedRef guard prevents a redundant setup on the initial synchronous run.
-  useObserve(() => {
-    if (options?.root !== undefined) getElement(options.root); // registers tracking dependency
-    if (options?.rootMargin !== undefined) get(options.rootMargin);
+  useObserveEffect((e) => {
+    e.onCleanup = cleanup;
+    const root = opts$.root.get();
+    opts$.rootMargin.get();
     isActive$.get();
     normalizeTargets(target);
-    if (stoppedRef.current || !mountedRef.current) return;
+    if (stoppedRef.current) return;
+    if (root === null) return;
     setup();
   });
 
@@ -124,7 +130,6 @@ export function useIntersectionObserver(
   const resume = () => {
     if (stoppedRef.current || !mountedRef.current) return;
     isActive$.set(true);
-    // useObserve detects isActive$ change and calls setup() automatically
   };
 
   const stop = () => {
