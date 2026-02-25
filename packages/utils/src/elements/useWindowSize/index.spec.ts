@@ -210,6 +210,58 @@ describe("useWindowSize()", () => {
     expect(resizeRemoved).toBe(true);
   });
 
+  it("type change via re-render triggers immediate re-measurement without resize event", async () => {
+    (window as any).outerWidth = 1100;
+    (window as any).outerHeight = 850;
+
+    const { result, rerender } = renderHook(
+      (props: { type: "inner" | "outer" | "visual" }) =>
+        useWindowSize({ type: props.type }),
+      { initialProps: { type: "inner" as "inner" | "outer" | "visual" } },
+    );
+
+    expect(result.current.width.get()).toBe(1024);
+    expect(result.current.height.get()).toBe(768);
+
+    await act(async () => {
+      rerender({ type: "outer" });
+      await flush();
+    });
+
+    expect(result.current.width.get()).toBe(1100);
+    expect(result.current.height.get()).toBe(850);
+  });
+
+  it("includeScrollbar change via re-render triggers immediate re-measurement without resize event", async () => {
+    Object.defineProperty(document.documentElement, "clientWidth", {
+      writable: true,
+      configurable: true,
+      value: 1000,
+    });
+    Object.defineProperty(document.documentElement, "clientHeight", {
+      writable: true,
+      configurable: true,
+      value: 740,
+    });
+
+    const { result, rerender } = renderHook(
+      (props: { includeScrollbar: boolean }) =>
+        useWindowSize({ includeScrollbar: props.includeScrollbar }),
+      { initialProps: { includeScrollbar: true } },
+    );
+
+    expect(result.current.width.get()).toBe(1024);
+    expect(result.current.height.get()).toBe(768);
+
+    await act(async () => {
+      rerender({ includeScrollbar: false });
+      await flush();
+    });
+
+    expect(result.current.width.get()).toBe(1000);
+    expect(result.current.height.get()).toBe(740);
+  });
+
   it("does not update after unmount", async () => {
     const { result, unmount } = renderHook(() => useWindowSize());
 

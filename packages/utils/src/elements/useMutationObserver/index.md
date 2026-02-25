@@ -12,6 +12,7 @@ Targets can be `El$`, `Observable<Element|null>`, or a plain `Element`.
 ## Usage
 
 ```tsx twoslash
+// @noErrors
 import { useEl$, useMutationObserver } from '@las/utils'
 function Component() {
   const el$ = useEl$<HTMLDivElement>()

@@ -7,7 +7,9 @@ import {
 } from "@legendapp/state/react";
 import { useEventListener } from "../../browser/useEventListener";
 import { useMediaQuery } from "../../browser/useMediaQuery";
+import { useMayObservableOptions } from "../../function/useMayObservableOptions";
 import { useWhenMounted } from "../../function/useWhenMounted";
+import type { DeepMaybeObservable } from "../../types";
 
 export interface UseWindowSizeOptions {
   initialWidth?: number;
@@ -24,18 +26,24 @@ export type UseWindowSizeReturn = Observable<{
 
 /*@__NO_SIDE_EFFECTS__*/
 export function useWindowSize(
-  options?: UseWindowSizeOptions,
+  options?: DeepMaybeObservable<UseWindowSizeOptions>,
 ): UseWindowSizeReturn {
+  // Standard Pattern: normalize DeepMaybeObservable<Options> into a stable computed Observable.
+  const opts$ = useMayObservableOptions<UseWindowSizeOptions>(options, {
+    initialWidth: "peek",
+    initialHeight: "peek",
+  });
+
   const size$ = useObservable({
-    width: options?.initialWidth ?? 0,
-    height: options?.initialHeight ?? 0,
+    width: opts$.initialWidth.peek() ?? 0,
+    height: opts$.initialHeight.peek() ?? 0,
   });
 
   const update = () => {
     if (typeof window === "undefined") return;
 
-    const type = options?.type ?? "inner";
-    const includeScrollbar = options?.includeScrollbar !== false;
+    const type = opts$.type.peek() ?? "inner";
+    const includeScrollbar = opts$.includeScrollbar.peek() !== false;
 
     let width: number;
     let height: number;
@@ -70,15 +78,25 @@ export function useWindowSize(
   useEventListener("resize", update, { passive: true });
 
   const vp$ = useWhenMounted(() =>
-    options?.type === "visual" ? window.visualViewport : null,
+    opts$.type.peek() === "visual" ? window.visualViewport : null,
   );
 
   useEventListener(vp$, "resize", update);
+
+  // type 또는 includeScrollbar가 변경되면 즉시 재측정
+  // 단일 함수 형태: opts$.type.get()/opts$.includeScrollbar.get()으로 dep 등록,
+  // update()는 .peek()만 사용하므로 추가 dep을 등록하지 않음.
+  useObserveEffect((e) => {
+    opts$.type.get();
+    opts$.includeScrollbar.get();
+    if (e.num > 0) update();
+  });
+
   const matches$ = useMediaQuery("(orientation: portrait)");
   useObserveEffect(
     matches$,
     () => {
-      if (options?.listenOrientation !== false) {
+      if (opts$.listenOrientation.get() !== false) {
         update();
       }
     },
