@@ -18,6 +18,12 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const DOCS_ROOT = path.resolve(__dirname, "..");
 const MONO_ROOT = path.resolve(DOCS_ROOT, "../..");
 
+// --- Package configuration (edit here when adding/renaming packages) ---
+const PACKAGES = [
+  { name: 'core', dir: 'core' },
+  { name: 'integrations', dir: 'integrations' },
+] as const
+
 // Same compiler options as astro.config.mjs
 const COMPILER_OPTIONS = {
   lib: ["dom", "dom.iterable", "esnext"],
@@ -47,10 +53,9 @@ function findMdFiles(dir: string): string[] {
   return results;
 }
 
-const SOURCE_DIRS = [
-  path.join(MONO_ROOT, "packages/core/src"),
-  path.join(MONO_ROOT, "packages/integrations/src"),
-];
+const SOURCE_DIRS = PACKAGES.map(pkg =>
+  path.join(MONO_ROOT, "packages", pkg.dir, "src")
+);
 
 let totalChecked = 0;
 let totalErrors = 0;

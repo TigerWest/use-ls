@@ -6,12 +6,16 @@ import { spawn } from 'child_process'
 const ASTRO_ROOT = process.cwd()
 const PACKAGES_ROOT = path.join(ASTRO_ROOT, '..', '..')
 
-const watchPatterns = [
-  path.join(PACKAGES_ROOT, 'packages', 'core', 'src', '**/*.{md,mdx}'),
-  path.join(PACKAGES_ROOT, 'packages', 'core', 'src', '**/demo.tsx'),
-  path.join(PACKAGES_ROOT, 'packages', 'integrations', 'src', '**/*.{md,mdx}'),
-  path.join(PACKAGES_ROOT, 'packages', 'integrations', 'src', '**/demo.tsx'),
-]
+// --- Package configuration (edit here when adding/renaming packages) ---
+const PACKAGES = [
+  { name: 'core', dir: 'core' },
+  { name: 'integrations', dir: 'integrations' },
+] as const
+
+const watchPatterns = PACKAGES.flatMap(pkg => [
+  path.join(PACKAGES_ROOT, 'packages', pkg.dir, 'src', '**/*.{md,mdx}'),
+  path.join(PACKAGES_ROOT, 'packages', pkg.dir, 'src', '**/demo.tsx'),
+])
 
 const ignorePatterns = [
   path.join(PACKAGES_ROOT, 'packages', '*', 'src', '**', '__tests__', '**'),

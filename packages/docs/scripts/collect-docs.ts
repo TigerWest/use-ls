@@ -33,12 +33,23 @@ interface DocFile {
   targetPath: string
   relativePath: string
   metadata: DocMetadata
-  package: 'core' | 'integrations'
+  package: PackageName
   filename: string
 }
 
 const ASTRO_ROOT = process.cwd()
 const PACKAGES_ROOT = path.join(ASTRO_ROOT, '..', '..')
+
+// --- Package configuration (edit here when adding/renaming packages) ---
+const PACKAGES = [
+  { name: 'core', dir: 'core' },
+  { name: 'integrations', dir: 'integrations' },
+] as const
+
+type PackageName = (typeof PACKAGES)[number]['name']
+
+// --- Project configuration ---
+const GITHUB_REPO_URL = 'https://github.com/your-org/usels'
 
 // --- Git helpers ---
 
@@ -144,7 +155,7 @@ function buildAutoSections(meta: {
   }
 
   if (meta.sourceFile) {
-    const githubUrl = `https://github.com/your-org/legendapp-state-utils/blob/main/${meta.sourceFile}`
+    const githubUrl = `${GITHUB_REPO_URL}/blob/main/${meta.sourceFile}`
     sections.push(`## Source\n\n[View on GitHub](${githubUrl})`)
   }
 
@@ -192,13 +203,13 @@ async function findMarkdownFiles(dir: string): Promise<string[]> {
 async function scanSourceFiles(): Promise<DocFile[]> {
   console.log('📂 Scanning for markdown files...')
 
-  const utilsDir = path.join(PACKAGES_ROOT, 'packages', 'core', 'src')
-  const integrationsDir = path.join(PACKAGES_ROOT, 'packages', 'integrations', 'src')
-
-  const utilsFiles = await findMarkdownFiles(utilsDir)
-  const integrationsFiles = await findMarkdownFiles(integrationsDir)
-
-  const allFiles = [...utilsFiles, ...integrationsFiles]
+  const allFiles = (
+    await Promise.all(
+      PACKAGES.map(pkg =>
+        findMarkdownFiles(path.join(PACKAGES_ROOT, 'packages', pkg.dir, 'src'))
+      )
+    )
+  ).flat()
   console.log(`   Found ${allFiles.length} markdown file(s)`)
 
   const docFiles: DocFile[] = []
@@ -215,7 +226,7 @@ async function scanSourceFiles(): Promise<DocFile[]> {
 
     const relativeToPackages = path.relative(PACKAGES_ROOT, sourcePath)
     const parts = relativeToPackages.split(path.sep)
-    const packageName = parts[1] as 'core' | 'integrations'
+    const packageName = parts[1] as PackageName
 
     // parts[3] is the category subdirectory for both packages:
     // core:         ['packages','core','src','function','get','index.md']         → parts[3] = 'function'
@@ -299,8 +310,9 @@ async function cleanGeneratedFiles(packageName: string): Promise<void> {
 async function transformAndWriteDocFiles(docFiles: DocFile[]): Promise<void> {
   console.log('\n📝 Transforming and writing documentation files...')
 
-  await cleanGeneratedFiles('core')
-  await cleanGeneratedFiles('integrations')
+  for (const pkg of PACKAGES) {
+    await cleanGeneratedFiles(pkg.name)
+  }
 
   let written = 0
 
