@@ -8,6 +8,8 @@ import { fileURLToPath } from "node:url";
 
 // https://astro.build/config
 export default defineConfig({
+  site: 'https://tigerwest.github.io/use-ls',
+  base: '/use-ls',
   vite: {
     resolve: {
       alias: {
@@ -25,7 +27,7 @@ export default defineConfig({
         {
           icon: "github",
           label: "GitHub",
-          href: "https://github.com/your-org/legendapp-state-utils",
+          href: "https://github.com/TigerWest/use-ls",
         },
       ],
       expressiveCode: {
@@ -56,7 +58,7 @@ export default defineConfig({
       sidebar: [
         {
           label: "Guides",
-          items: [{ label: "Example Guide", slug: "guides/example" }],
+          items: [{ label: "Getting Started", slug: "guides/example" }],
         },
         {
           label: "Reference",
