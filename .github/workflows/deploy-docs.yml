@@ -32,7 +32,7 @@ jobs:
         run: pnpm install --frozen-lockfile
 
       - name: Build packages
-        run: pnpm --filter=./packages/core --filter=./packages/integrations build
+        run: pnpm --filter=./packages/babel --filter=./packages/vite --filter=./packages/core --filter=./packages/integrations build
 
       - name: Build docs
         run: pnpm --filter=./packages/docs build
