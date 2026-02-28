@@ -1,6 +1,6 @@
 {
   "name": "@usels/babel-plugin-legend-memo",
-  "version": "0.1.0",
+  "version": "0.0.1-beta.3",
   "description": "Babel plugin to auto-wrap Legend-State observable .get() calls in JSX with <Auto> component",
   "main": "dist/index.js",
   "module": "dist/index.mjs",

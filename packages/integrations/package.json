@@ -1,6 +1,6 @@
 {
   "name": "@usels/integrations",
-  "version": "0.0.1",
+  "version": "0.0.1-beta.3",
   "description": "Third-party integrations for Legend-App State utilities",
   "main": "./dist/index.js",
   "module": "./dist/index.mjs",
