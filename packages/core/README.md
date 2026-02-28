@@ -13,7 +13,6 @@ npm install @usels/core
 - **Type-safe utilities** - Full TypeScript support with type guards
 - **Observable utilities** - MaybeObservable pattern for flexible value handling
 - **Tree-shakeable** - Only import what you need
-- **Zero dependencies** - Lightweight and fast (Legend-State is a peer dependency)
 - **ESM & CJS** - Support for both module systems
 
 ## License

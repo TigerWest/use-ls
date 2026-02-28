@@ -6,6 +6,7 @@ import { useResizeObserver } from "../useResizeObserver";
 import { useMutationObserver } from "../useMutationObserver";
 import { useEventListener } from "../../browser/useEventListener";
 import { isWindow } from "../../shared";
+import { defaultWindow } from "../../shared/configurable";
 import { useMayObservableOptions } from "../../function/useMayObservableOptions";
 import type { DeepMaybeObservable } from "../../types";
 
@@ -46,7 +47,7 @@ const ZERO = {
 };
 
 // isWindow(window) returns false in SSR (typeof window === "undefined"), true in browser.
-const win = typeof window !== "undefined" ? window : null;
+const win = defaultWindow;
 
 /**
  * Tracks the bounding rect of a DOM element (x, y, top, right, bottom, left, width, height).

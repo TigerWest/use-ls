@@ -17,6 +17,7 @@ export * from "./elements/useWindowFocus";
 export * from "./elements/useWindowSize";
 export * from "./elements/useParentElement";
 export * from "./elements/useMouseInElement";
+export * from "./elements/useDraggable";
 
 export * from "./sensors/useScroll";
 export * from "./sensors/useWindowScroll";

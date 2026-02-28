@@ -2,6 +2,7 @@ import type { Observable } from "@legendapp/state";
 import { useObservable } from "@legendapp/state/react";
 import { useCallback } from "react";
 import { isWindow } from "../../shared";
+import { defaultWindow, defaultDocument } from "../../shared/configurable";
 import { useMayObservableOptions } from "../../function/useMayObservableOptions";
 import type { DeepMaybeObservable } from "../../types";
 import { type MaybeElement, peekElement } from "../useRef$";
@@ -42,7 +43,7 @@ export interface UseMouseInElementReturn {
 }
 
 // isWindow(window) returns false in SSR (typeof window === "undefined"), true in browser.
-const win = typeof window !== "undefined" ? window : null;
+const win = defaultWindow;
 
 /**
  * Tracks whether the mouse cursor is inside a DOM element and calculates
@@ -158,7 +159,7 @@ export function useMouseInElement(
 
   // document mouseleave → force isOutside = true
   const stopLeave = useEventListener(
-    typeof document !== "undefined" ? document : null,
+    defaultDocument,
     "mouseleave",
     () => state$.isOutside.set(true),
   );

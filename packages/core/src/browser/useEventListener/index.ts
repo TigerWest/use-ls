@@ -7,6 +7,7 @@ import { normalizeTargets } from "../../shared/normalizeTargets";
 import { get } from "../../function/get";
 import type { Arrayable, MaybeObservable } from "../../types";
 import { toArray } from "../../shared/utils";
+import { defaultWindow } from "../../shared/configurable";
 
 /**
  * Returns true if the value looks like an event name argument (string or
@@ -169,7 +170,7 @@ export function useEventListener(...args: any[]): () => void {
     // them as reactive dependencies for this observer.
     const targets: EventTarget[] = (() => {
       if (!hasTarget) {
-        return typeof window !== "undefined" ? [window] : [];
+        return defaultWindow ? [defaultWindow] : [];
       }
       if (rawTarget == null) return [];
 

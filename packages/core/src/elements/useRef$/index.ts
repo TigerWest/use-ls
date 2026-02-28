@@ -27,6 +27,7 @@ export type MaybeElement =
   | Document
   | Window
   | null
+  | undefined
   | Observable<OpaqueObject<Element> | null>;
 
 /**
@@ -100,6 +101,7 @@ export function isRef$(v: unknown): v is Ref$<Element> {
 export function getElement(
   v: MaybeElement,
 ): HTMLElement | Document | Window | null {
+  if (v == null) return null;
   if (isRef$(v)) {
     const raw = v.get();
     return raw
@@ -120,6 +122,7 @@ export function getElement(
 export function peekElement(
   v: MaybeElement,
 ): HTMLElement | Document | Window | null {
+  if (v == null) return null;
   if (isRef$(v)) {
     const raw = v.peek();
     return raw
