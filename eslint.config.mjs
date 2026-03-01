@@ -2,6 +2,7 @@ import legendPlugin from "@usels/eslint-plugin";
 import tsParser from "@typescript-eslint/parser";
 import tsPlugin from "@typescript-eslint/eslint-plugin";
 import reactHooks from "eslint-plugin-react-hooks";
+import prettierRecommended from "eslint-plugin-prettier/recommended";
 
 const files = ["packages/core/src/**/*.ts", "packages/core/src/**/*.tsx"];
 
@@ -51,5 +52,10 @@ export default [
     rules: {
       "@typescript-eslint/no-explicit-any": "off",
     },
+  },
+  // Prettier: ESLint과 충돌하는 포맷팅 규칙 비활성화 + prettier 위반을 ESLint 오류로 표시
+  {
+    ...prettierRecommended,
+    files,
   },
 ];
