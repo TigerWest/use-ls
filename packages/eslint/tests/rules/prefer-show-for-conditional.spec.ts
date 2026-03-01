@@ -84,6 +84,14 @@ ruleTester.run('prefer-show-for-conditional', preferShowForConditional, {
     {
       code: `const jsx = <input aria-label={isLoading$.get() ? 'Loading' : 'Ready'} />;`,
     },
+    // 14. Chained .get() in attribute — prop value, not rendered child
+    {
+      code: `const jsx = <input aria-label={todo$.isLoading.get() ? 'Loading' : 'Ready'} />;`,
+    },
+    // 15. Chained .get() && string — requireJsxBranch=true (default) skips
+    {
+      code: `const jsx = <div>{todo$.isLoading.get() && 'Loading...'}</div>;`,
+    },
   ],
 
   invalid: [
@@ -137,6 +145,26 @@ ruleTester.run('prefer-show-for-conditional', preferShowForConditional, {
     {
       code: `const jsx = <div>{isLoading$ && 'Loading...'}</div>;`,
       options: [{ requireJsxBranch: false }],
+      errors: [{ messageId: 'preferShow' }],
+    },
+    // 11. Chained .get() && JSXElement — todo$.isLoading.get() pattern
+    {
+      code: `const jsx = <div>{todo$.isLoading.get() && <Spinner />}</div>;`,
+      errors: [{ messageId: 'preferShow' }],
+    },
+    // 12. Chained .peek() && JSXElement
+    {
+      code: `const jsx = <div>{todo$.isError.peek() && <ErrorMsg />}</div>;`,
+      errors: [{ messageId: 'preferShow' }],
+    },
+    // 13. Chained .get() ternary
+    {
+      code: `const jsx = <div>{todo$.isSuccess.get() ? <Content /> : <Fallback />}</div>;`,
+      errors: [{ messageId: 'preferShow' }],
+    },
+    // 14. Deeply chained — user$.profile.avatar.loaded.get()
+    {
+      code: `const jsx = <div>{user$.profile.avatar.loaded.get() && <Img />}</div>;`,
       errors: [{ messageId: 'preferShow' }],
     },
   ],

@@ -1,5 +1,10 @@
 import type { TSESTree } from "@typescript-eslint/utils";
-import { hasAncestor, getJsxElementName } from "../utils/ast-helpers";
+import {
+  hasAncestor,
+  getJsxElementName,
+  isDollarSuffixed,
+  isObservableGetCall,
+} from "../utils/ast-helpers";
 import { createRule } from "../utils/create-rule";
 
 type MessageIds = "preferShow";
@@ -11,33 +16,13 @@ interface Options {
 }
 
 /**
- * Returns true if node is a `$`-suffixed Identifier.
- */
-function isDollarIdentifier(node: TSESTree.Node): boolean {
-  return node.type === "Identifier" && node.name.endsWith("$");
-}
-
-/**
- * Returns true if node is a direct `.get()` or `.peek()` call on a `$`-suffixed object.
- * e.g. `isVisible$.get()` or `items$.peek()`
- */
-function isDollarGetCall(node: TSESTree.Node): boolean {
-  if (node.type !== "CallExpression") return false;
-  if (node.arguments.length !== 0) return false;
-  const { callee } = node;
-  if (callee.type !== "MemberExpression") return false;
-  if (callee.property.type !== "Identifier") return false;
-  if (callee.property.name !== "get" && callee.property.name !== "peek") return false;
-  return isDollarIdentifier(callee.object);
-}
-
-/**
  * Returns true if the condition is an observable-based condition:
- * - `$`-suffixed Identifier
- * - `$xxx.get()` or `$xxx.peek()` call
+ * - `$`-suffixed Identifier (e.g. `isVisible$`)
+ * - `.get()` or `.peek()` call on any observable expression,
+ *   including chained access (e.g. `todo$.isLoading.get()`)
  */
 function isObservableCondition(node: TSESTree.Node): boolean {
-  return isDollarIdentifier(node) || isDollarGetCall(node);
+  return isDollarSuffixed(node) || isObservableGetCall(node);
 }
 
 /**
