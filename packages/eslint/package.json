@@ -2,7 +2,12 @@
   "name": "@usels/eslint-plugin",
   "version": "0.0.0",
   "description": "ESLint plugin for Legend-State and use-legend utilities",
-  "keywords": ["eslint", "eslint-plugin", "legend-state", "observable"],
+  "keywords": [
+    "eslint",
+    "eslint-plugin",
+    "legend-state",
+    "observable"
+  ],
   "main": "dist/index.js",
   "module": "dist/index.mjs",
   "types": "dist/index.d.ts",
@@ -28,6 +33,7 @@
   },
   "devDependencies": {
     "@typescript-eslint/parser": "^8.0.0",
+    "@typescript-eslint/rule-tester": "8.56.1",
     "eslint": "^9.0.0",
     "tsup": "^8.0.0",
     "typescript": "^5.0.0",

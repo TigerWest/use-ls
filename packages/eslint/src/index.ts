@@ -28,12 +28,12 @@ const plugin: Plugin = {
 //   export default [legendPlugin.configs.recommended]
 // (avoids circular reference at type level by assigning post-creation)
 Object.assign(plugin.configs.recommended, {
-  plugins: { 'use-legend': plugin },
   ...recommended,
+  plugins: { 'use-legend': plugin },
 });
 Object.assign(plugin.configs.strict, {
-  plugins: { 'use-legend': plugin },
   ...strict,
+  plugins: { 'use-legend': plugin },
 });
 
 export default plugin;

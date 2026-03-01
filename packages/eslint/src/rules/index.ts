@@ -1,4 +1,8 @@
 import type { TSESLint } from '@typescript-eslint/utils';
+import { observableNaming } from './observable-naming';
+import { noObservableInJsx } from './no-observable-in-jsx';
 
-// Rules will be added here as they are implemented (Phase 1+)
-export const rules: Record<string, TSESLint.RuleModule<string, unknown[]>> = {};
+export const rules: Record<string, TSESLint.RuleModule<string, unknown[]>> = {
+  'observable-naming': observableNaming,
+  'no-observable-in-jsx': noObservableInJsx,
+};

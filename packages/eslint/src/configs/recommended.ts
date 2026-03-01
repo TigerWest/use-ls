@@ -6,8 +6,7 @@ import type { TSESLint } from '@typescript-eslint/utils';
 //   export default [legendPlugin.configs.recommended];
 export const recommended: TSESLint.FlatConfig.Config = {
   rules: {
-    // Phase 1 rules (populated after implementation):
-    // 'use-legend/observable-naming': 'error',
-    // 'use-legend/no-observable-in-jsx': 'error',
+    'use-legend/observable-naming': 'error',
+    'use-legend/no-observable-in-jsx': 'error',
   },
 };

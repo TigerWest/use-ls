@@ -13,6 +13,7 @@ export function isDollarSuffixed(node: TSESTree.Node): node is TSESTree.Identifi
  */
 export function isObservableGetCall(node: TSESTree.Node): node is TSESTree.CallExpression {
   if (node.type !== 'CallExpression') return false;
+  if (node.arguments.length !== 0) return false;
   const { callee } = node;
   if (callee.type !== 'MemberExpression') return false;
   const { property } = callee;

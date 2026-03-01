@@ -39,8 +39,8 @@ describe("normalizeTargets()", () => {
   });
 
   it("filters out Observable<null>", () => {
-    const obs = observable<ReturnType<typeof ObservableHint.opaque<Element>> | null>(null);
-    expect(normalizeTargets(obs)).toEqual([]);
+    const obs$ = observable<ReturnType<typeof ObservableHint.opaque<Element>> | null>(null);
+    expect(normalizeTargets(obs$)).toEqual([]);
   });
 
   it("unwraps Ref$ target and returns the raw DOM element", () => {
