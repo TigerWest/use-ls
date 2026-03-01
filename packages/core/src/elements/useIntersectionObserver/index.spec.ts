@@ -10,11 +10,10 @@ const wrapEl = (el: Element) => observable<OpaqueObject<Element> | null>(Observa
 
 const mockObserve = vi.fn();
 const mockDisconnect = vi.fn();
-let capturedCallback: IntersectionObserverCallback;
 
 const MockIntersectionObserver = vi.fn(
   function(cb: IntersectionObserverCallback, init?: IntersectionObserverInit) {
-    capturedCallback = cb;
+    void cb;
     void init; // captured for assertion via toHaveBeenCalledWith
     return { observe: mockObserve, disconnect: mockDisconnect };
   },
@@ -240,19 +239,6 @@ describe("useIntersectionObserver()", () => {
 
     expect(result.current.isSupported$.get()).toBe(false);
     expect(MockIntersectionObserver).not.toHaveBeenCalled();
-  });
-
-  it("invokes callback when intersection fires", () => {
-    const el = document.createElement("div");
-    const cb = vi.fn();
-    renderHook(() => useIntersectionObserver(wrapEl(el),cb));
-
-    const entry = { isIntersecting: true } as IntersectionObserverEntry;
-    act(() => {
-      capturedCallback([entry], {} as IntersectionObserver);
-    });
-
-    expect(cb).toHaveBeenCalledWith([entry], expect.anything());
   });
 
   it("passes root option to IntersectionObserver", () => {

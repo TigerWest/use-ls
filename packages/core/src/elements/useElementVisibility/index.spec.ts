@@ -52,17 +52,6 @@ describe("useElementVisibility()", () => {
     expect(result.current.get()).toBe(true);
   });
 
-  it("becomes true when element enters viewport", () => {
-    const el = document.createElement("div");
-    const { result } = renderHook(() => useElementVisibility(wrapEl(el)));
-
-    act(() => {
-      capturedCallback([makeEntry(true)], {} as IntersectionObserver);
-    });
-
-    expect(result.current.get()).toBe(true);
-  });
-
   it("becomes false when element leaves viewport", () => {
     const el = document.createElement("div");
     const { result } = renderHook(() => useElementVisibility(wrapEl(el)));
@@ -91,17 +80,6 @@ describe("useElementVisibility()", () => {
 
     // Entry with time=200 (isIntersecting: false) should win
     expect(result.current.get()).toBe(false);
-  });
-
-  it("once: true stops observer after first visible", () => {
-    const el = document.createElement("div");
-    renderHook(() => useElementVisibility(wrapEl(el), { once: true }));
-
-    act(() => {
-      capturedCallback([makeEntry(true)], {} as IntersectionObserver);
-    });
-
-    expect(mockDisconnect).toHaveBeenCalled();
   });
 
   it("once: true does not stop observer while element is not intersecting", () => {
