@@ -17,7 +17,7 @@ npm install -D @usels/vite-plugin-legend-memo
 
 ## What makes these hooks different?
 
-`use-ls` hooks don't use `useState` internally. Instead, they return **Legend-State observables** — fine-grained reactive values that update without re-rendering the entire component tree.
+`use-legend` hooks don't use `useState` internally. Instead, they return **Legend-State observables** — fine-grained reactive values that update without re-rendering the entire component tree.
 
 ---
 
