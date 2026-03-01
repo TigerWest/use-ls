@@ -12,6 +12,15 @@ export default defineConfig({
   site: "https://tigerwest.github.io/use-legend",
   base: "/use-legend",
   vite: {
+    server: {
+      warmup: {
+        // Pre-transform MDX files at server startup so TwoSlash's TypeScript
+        // Language Service is initialized before any browser request comes in.
+        // Without this, the first request triggers a cold-start that exceeds
+        // Vite's 60s transport timeout.
+        ssrFiles: ["./src/content/docs/**/*.mdx"],
+      },
+    },
     plugins: [autoWrap({ allGet: true })],
     resolve: {
       alias: {
