@@ -14,6 +14,7 @@ export default defineConfig({
     projects: [
       'packages/babel/vitest.config.ts',
       'packages/core/vitest.config.ts',
+      'packages/eslint/vitest.config.ts',
       'packages/integrations/vitest.config.ts',
     ],
 
