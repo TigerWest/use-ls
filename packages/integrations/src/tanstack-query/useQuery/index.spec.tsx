@@ -1,8 +1,8 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { renderHook, waitFor } from "@testing-library/react";
-import { observable, ObservableObject } from "@legendapp/state";
+import { observable } from "@legendapp/state";
 import { useObserve } from "@legendapp/state/react";
-import { useQuery } from "../useQuery";
+import { useQuery } from ".";
 import { createWrapper } from "../../__tests__/test-utils";
 
 describe("useQuery", () => {
@@ -316,9 +316,9 @@ describe("useQuery", () => {
 
       await waitFor(() => expect(queryFn).toHaveBeenCalledTimes(1));
 
-      // The actual cache key should be the serialized version
-      const serializedKey = JSON.stringify(["items", { status: "active" }]);
-      const cacheData = queryClient.getQueryData([serializedKey]);
+      // The cache key should be the resolved array (Observable values extracted),
+      // NOT a wrapped serialized string — so queryClient.getQueryData works with the raw key.
+      const cacheData = queryClient.getQueryData(["items", { status: "active" }]);
 
       expect(cacheData).toBe("data");
     });
@@ -892,9 +892,9 @@ describe("useQuery", () => {
 
       await waitFor(() => expect(queryFn).toHaveBeenCalledTimes(1));
 
-      // Verify cache has the data with serialized key
-      const serializedKey = JSON.stringify(["products", { category: "electronics" }]);
-      const cacheData = queryClient.getQueryData([serializedKey]);
+      // Verify cache has the data with the resolved array key (Observable values extracted).
+      // queryClient.getQueryData uses the raw resolved key, not a serialized string wrapper.
+      const cacheData = queryClient.getQueryData(["products", { category: "electronics" }]);
       expect(cacheData).toBe("data");
     });
 
