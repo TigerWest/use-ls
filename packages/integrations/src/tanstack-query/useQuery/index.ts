@@ -9,7 +9,7 @@ import {
   peek,
   type MaybeObservable,
   type DeepMaybeObservable,
-  useMayObservableOptions,
+  useMaybeObservable,
 } from "@usels/core";
 import { useQueryClient } from "../useQueryClient";
 
@@ -160,22 +160,14 @@ export function useQuery<TData = unknown>(
   const observerRef = useRef<QueryObserver<TData, Error> | null>(null);
 
   // Normalize DeepMaybeObservable<UseQueryOptions> into a stable computed Observable.
-  // - 'get.function' for queryFn: prevents Legend-State from treating it as a child observable
-  // - 'get' (default) for other fields: Observables are kept as-is in the result,
+  // - 'function' for queryFn: prevents Legend-State from treating it as a child observable
+  // - 'default' (omitted) for other fields: Observables are kept as-is in the result,
   //   so that get(opts.enabled) inside useObserve explicitly registers the dep
   // - queryKey is NOT listed here: deepResolveValue handles Observable elements directly
-  const opts$ = useMayObservableOptions<UseQueryOptions<TData>>(
+  const opts$ = useMaybeObservable<UseQueryOptions<TData>>(
     options as DeepMaybeObservable<UseQueryOptions<TData>>,
     {
-      enabled: "get",
-      staleTime: "get",
-      gcTime: "get",
-      retry: "get",
-      refetchOnWindowFocus: "get",
-      refetchOnMount: "get",
-      refetchOnReconnect: "get",
-      queryFn: "get.function",
-      throwOnError: "get",
+      queryFn: "function",
     }
   );
 
@@ -248,7 +240,7 @@ export function useQuery<TData = unknown>(
 
     observerRef.current?.setOptions({
       queryKey: resolvedKey,
-      // opts.queryFn: with 'get.function' hint, stored directly (not as child observable).
+      // opts.queryFn: with 'function' hint, stored directly (not as child observable).
       // Access via opts$.get().queryFn (POJO property) gives the callable function.
       queryFn: opts.queryFn,
       enabled: get(opts.enabled) ?? true,

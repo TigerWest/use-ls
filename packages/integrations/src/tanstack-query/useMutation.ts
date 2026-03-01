@@ -112,7 +112,7 @@ export function useMutation<TData = unknown, TVariables = void, TContext = unkno
     mutate(variables: TVariables) {
       // Cast to any: TanStack Query mutate() returns void in types but may return
       // a Promise at runtime. Swallow it to prevent unhandled rejection warnings.
-      (observerRef.current?.mutate(variables) as any)?.catch?.(() => {});
+      (observerRef.current?.mutate(variables) as unknown as Promise<void>)?.catch?.(() => {});
     },
     mutateAsync(variables: TVariables): Promise<TData> {
       if (observerRef.current) {
@@ -122,7 +122,7 @@ export function useMutation<TData = unknown, TVariables = void, TContext = unkno
             observerRef.current!.mutate(variables, {
               onSuccess: (data) => resolve(data),
               onError: (error) => reject(error),
-            }) as any
+            }) as unknown as Promise<void>
           )?.catch?.(() => {});
         });
       }
@@ -133,6 +133,7 @@ export function useMutation<TData = unknown, TVariables = void, TContext = unkno
     },
   });
 
+  // eslint-disable-next-line react-hooks/refs -- lazy initialization: observer created once on first render
   if (!observerRef.current) {
     observerRef.current = new MutationObserver<TData, Error, TVariables, TContext>(queryClient, {
       mutationKey: options.mutationKey,
@@ -162,7 +163,6 @@ export function useMutation<TData = unknown, TVariables = void, TContext = unkno
     if (!observer) return;
 
     const unsubscribe = observer.subscribe((result) => {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       state$.assign({
         data: result.data,
         error: result.error ?? null,
@@ -185,7 +185,6 @@ export function useMutation<TData = unknown, TVariables = void, TContext = unkno
       unsubscribe();
     };
     // state$는 stable하므로 의존성에 불필요
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   });
 
   return state$;

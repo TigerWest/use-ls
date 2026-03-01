@@ -113,16 +113,16 @@ produce a **one-time snapshot**. Observable changes after mount are silently ign
 
 ---
 
-### Standard Pattern — `useMayObservableOptions(options, transform?)`
+### Standard Pattern — `useMaybeObservable(options, transform?)`
 
-`useMayObservableOptions` normalizes `DeepMaybeObservable<T>` into a stable computed
+`useMaybeObservable` normalizes `DeepMaybeObservable<T>` into a stable computed
 `Observable<T | undefined>`. Use it at the top of every hook that accepts `DeepMaybeObservable` options.
 
 ```ts
-import { useMayObservableOptions } from "../function/useMayObservableOptions";
+import { useMaybeObservable } from "../function/useMaybeObservable";
 
 function useMyHook(options?: DeepMaybeObservable<UseMyHookOptions>) {
-  const opts$ = useMayObservableOptions(options);
+  const opts$ = useMaybeObservable(options);
   //
   // Outer Observable case:  get(options$) → dep registered on options$
   //                         child-field notifications propagate via parent dep
@@ -154,13 +154,11 @@ Pass an optional `FieldTransformMap<T>` as the second argument to control how ea
 
 | Hint | Behavior | Use when |
 |------|----------|----------|
-| _(omitted)_ / `'get'` | no-op — Legend-State auto-derefs + registers dep at call site | reactive plain fields (default) |
-| `'peek'` | `peek(fieldValue)` — no dep, mount-time snapshot | fields fixed at mount (`initialValue`, `once`) |
-| `'get.element'` | `getElement(fieldValue)` (reactive) + `ObservableHint.opaque()` | `MaybeElement` fields that should be reactive |
-| `'peek.element'` | `peekElement(fieldValue)` (non-reactive) + `ObservableHint.opaque()` | `MaybeElement` fields fixed at mount |
-| `'get.opaque'` | `get(fieldValue)` + `ObservableHint.opaque()` | non-element objects needing opaque wrapping |
-| `'get.plain'` | `get(fieldValue)` + `ObservableHint.plain()` | prevent nested auto-deref |
-| `'get.function'` | `get(fieldValue)` + `ObservableHint.function()` | callback fields |
+| _(omitted)_ / `'default'` | no-op — Legend-State auto-derefs + registers dep at call site | reactive plain fields (default) |
+| `'element'` | `getElement(fieldValue)` (reactive) + `ObservableHint.opaque()` | `MaybeElement` fields |
+| `'opaque'` | `get(fieldValue)` + `ObservableHint.opaque()` | non-element objects needing opaque wrapping |
+| `'plain'` | `get(fieldValue)` + `ObservableHint.plain()` | prevent nested auto-deref |
+| `'function'` | `get(fieldValue)` + `ObservableHint.function()` | callback fields |
 | `(value) => R` | custom transform function | escape hatch for complex cases |
 
 > **Note:** Object-form hints are skipped when `options` is an outer `Observable<T>`.
@@ -169,7 +167,7 @@ Pass an optional `FieldTransformMap<T>` as the second argument to control how ea
 
 ### Standard Pattern (with HTMLElement field)
 
-Use `'get.element'` hint for `MaybeElement` fields.
+Use `'element'` hint for `MaybeElement` fields.
 `getElement()` in a reactive context registers dep on Ref$ mount/unmount and handles opaque wrapping automatically.
 
 ```ts
@@ -179,8 +177,8 @@ interface UseMyHookOptions {
 }
 
 function useMyHook(options?: DeepMaybeObservable<UseMyHookOptions>) {
-  const opts$ = useMayObservableOptions(options, {
-    scrollTarget: 'get.element', // resolves Ref$/Observable<Element> reactively, wraps in opaque
+  const opts$ = useMaybeObservable(options, {
+    scrollTarget: 'element', // resolves Ref$/Observable<Element> reactively, wraps in opaque
   });
 
   useObserve(() => {
@@ -191,19 +189,42 @@ function useMyHook(options?: DeepMaybeObservable<UseMyHookOptions>) {
 }
 ```
 
-> `'get.element'` internally calls `getElement(fieldValue)` → registers dep on Ref$'s internal Observable.
+> `'element'` internally calls `getElement(fieldValue)` → registers dep on Ref$'s internal Observable.
 > When Ref$ mounts, `opts$` recomputes → `opts$.scrollTarget` updates → `useObserve` re-runs.
+
+### Standard Pattern (with callback fields)
+
+Use `'function'` hint for callback fields. Legend-State stores the function directly
+(not as a child observable), so access via `opts$.peek()?.fieldName` pattern.
+
+```ts
+interface UseMyHookOptions {
+  onStart?: (pos: Position, e: PointerEvent) => void;
+}
+
+function useMyHook(options?: DeepMaybeObservable<UseMyHookOptions>) {
+  const opts$ = useMaybeObservable(options, {
+    onStart: 'function',
+  });
+
+  // ✅ Correct — access via opts$.peek()?.fieldName
+  opts$.peek()?.onStart?.(pos, e);
+
+  // ❌ Wrong — 'function' hint stores directly, NOT as child observable
+  // opts$.onStart.peek()?.(pos, e)  ← .peek is not a function
+}
+```
 
 ### Passthrough Pattern (delegating to hooks with internal `useObserve`)
 
 When delegating to a hook that already tracks options reactively inside its own `useObserve`
-(e.g., `useIntersectionObserver`), normalize first with `useMayObservableOptions`, then pass
+(e.g., `useIntersectionObserver`), normalize first with `useMaybeObservable`, then pass
 the computed Observable child fields as references.
 
 ```ts
 function useMyHook(options?: DeepMaybeObservable<UseMyHookOptions>) {
-  const opts$ = useMayObservableOptions(options, {
-    scrollTarget: 'get.element',
+  const opts$ = useMaybeObservable(options, {
+    scrollTarget: 'element',
   });
 
   // Pass computed Observable child fields — downstream useObserve tracks them
@@ -216,19 +237,19 @@ function useMyHook(options?: DeepMaybeObservable<UseMyHookOptions>) {
 
 ---
 
-## Rule 3 — Mount-time-only Properties: Use `peek`
+## Rule 3 — Mount-time-only Properties: Use `.peek()` at call site
 
 Some options are intentionally captured **once at mount** and never updated reactively:
 
 - `initialValue` — seeds the initial state of an Observable; later changes have no meaning
 - `once` — lifecycle behavior determined at mount; dynamic changes do not apply retroactively
 
-For these fields, use `peek()` from `@usels/core` — the non-reactive counterpart to `get()`.
+For these fields, omit the hint (use `'default'`) and read them with `.peek()` at the call site.
 This is **intentional** and explicitly signals "read once, fixed at mount" — distinct from
-the Anti-pattern in Rule 2 where `get()` is accidentally used for fields that *should* be reactive.
+the Anti-pattern in Rule 2 where `.get()` is accidentally used for fields that *should* be reactive.
 
 ```ts
-import { useMayObservableOptions } from "../function/useMayObservableOptions";
+import { useMaybeObservable } from "../function/useMaybeObservable";
 
 interface UseMyHookOptions {
   initialValue?: boolean;  // mount-time-only — fixed at mount
@@ -237,10 +258,10 @@ interface UseMyHookOptions {
 }
 
 function useMyHook(options?: DeepMaybeObservable<UseMyHookOptions>) {
-  const opts$ = useMayObservableOptions(options, {
-    initialValue: 'peek', // ✅ mount-time-only — no dep registered
-    once: 'peek',         // ✅ mount-time-only — no dep registered
-    // rootMargin: omitted → default 'get' → Legend-State auto-deref → reactive
+  const opts$ = useMaybeObservable(options, {
+    scrollTarget: 'element',
+    // initialValue, once: omitted → 'default' → use .peek() at call site for mount-time read
+    // rootMargin: omitted → 'default' → Legend-State auto-deref → reactive
   });
 
   // opts$.initialValue.peek() / opts$.once.peek() — no dep, intentional one-time read
@@ -260,10 +281,10 @@ function useMyHook(options?: DeepMaybeObservable<UseMyHookOptions>) {
 }
 ```
 
-> **`'peek'` hint vs omitted (default `'get'`) decision rule**
+> **Mount-time-only field decision rule**
 >
-> | Field characteristic | FieldHint | Reason |
-> |----------------------|-----------|--------|
-> | Changes should re-trigger setup | _(omitted)_ — `'get'` | Legend-State auto-deref registers dep at call site |
-> | Fixed at mount by design | `'peek'` | mount-time snapshot, no dep — explicit and intentional |
-> | Mount-time seed for an Observable | `'peek'` | Observable ignores later changes anyway; `peek` makes intent clear |
+> | Field characteristic | Access pattern | Reason |
+> |----------------------|----------------|--------|
+> | Changes should re-trigger setup | `opts$.field.get()` inside `useObserve` | Legend-State auto-deref registers dep at call site |
+> | Fixed at mount by design | `opts$.field.peek()` at render time | mount-time snapshot, no dep — explicit and intentional |
+> | Mount-time seed for an Observable | `opts$.field.peek()` at render time | Observable ignores later changes anyway; `peek` makes intent clear |

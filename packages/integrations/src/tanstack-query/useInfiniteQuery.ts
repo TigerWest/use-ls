@@ -150,6 +150,7 @@ export function useInfiniteQuery<
   const previousQueryKeyRef = useRef<string | null>(null);
 
   // options 자체가 Observable인 경우 초기 스냅샷 추출 (최초 1회용)
+  // eslint-disable-next-line use-legend/observable-naming -- get() resolves to raw value, not an observable
   const initialOptions = get(options);
 
   // Observable 상태 초기화 (refetch/fetchNextPage/fetchPreviousPage는 별도 함수로 분리 - observable 안에 넣으면 Observable<Function>이 됨)
@@ -195,8 +196,10 @@ export function useInfiniteQuery<
     },
   });
 
+  // eslint-disable-next-line react-hooks/refs -- lazy initialization: observer created once on first render
   if (!observerRef.current) {
     const initialQueryKeyString = serializeQueryKey(initialOptions.queryKey);
+    // eslint-disable-next-line react-hooks/refs -- initial setup during first render only
     previousQueryKeyRef.current = initialQueryKeyString;
 
     observerRef.current = new InfiniteQueryObserver<
@@ -226,6 +229,7 @@ export function useInfiniteQuery<
   // options 자체가 Observable이면 get(options)로 추적,
   // 각 필드가 Observable이면 get(field)로 추적
   useObserve(() => {
+    // eslint-disable-next-line use-legend/observable-naming -- get() resolves to raw value, not an observable
     const resolved = get(options);
 
     // options 객체를 직렬화하면서 Observable 값을 추출
@@ -264,8 +268,7 @@ export function useInfiniteQuery<
     const observer = observerRef.current;
     if (!observer) return;
 
-    const unsubscribe = observer.subscribe((result: any) => {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const unsubscribe = observer.subscribe((result) => {
       state$.assign({
         data: result.data,
         error: result.error ?? null,
@@ -305,7 +308,6 @@ export function useInfiniteQuery<
       unsubscribe();
     };
     // state$는 stable하므로 의존성에 불필요
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   });
 
   return state$;
