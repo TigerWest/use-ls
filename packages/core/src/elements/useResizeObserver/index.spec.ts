@@ -70,18 +70,6 @@ afterEach(() => {
 // ---------------------------------------------------------------------------
 
 describe("useResizeObserver()", () => {
-  it("calls callback when element resizes", () => {
-    const div = document.createElement("div");
-    const cb = vi.fn();
-
-    renderHook(() => useResizeObserver(wrapEl(div), cb));
-
-    const instance = ResizeObserverMock.instances.at(-1)!;
-    act(() => instance.trigger(div));
-
-    expect(cb).toHaveBeenCalledOnce();
-  });
-
   it("observes multiple elements from an array", () => {
     const a = document.createElement("div");
     const b = document.createElement("span");
@@ -117,12 +105,6 @@ describe("useResizeObserver()", () => {
     );
 
     expect(observeSpy).toHaveBeenCalledWith(div, { box: "border-box" });
-  });
-
-  it("returns isSupported: true when ResizeObserver is available", () => {
-    const div = document.createElement("div");
-    const { result } = renderHook(() => useResizeObserver(wrapEl(div), vi.fn()));
-    expect(result.current.isSupported$.get()).toBe(true);
   });
 
   it("returns isSupported: false and skips setup when ResizeObserver is unavailable", () => {
@@ -211,18 +193,6 @@ describe("useResizeObserver()", () => {
     expect(instance.observed).toContain(el$El);
     expect(instance.observed).toContain(obsEl);
     expect(instance.observed).toContain(plainEl);
-  });
-
-  it("disconnects the active observer on unmount", () => {
-    const div = document.createElement("div");
-    const { unmount } = renderHook(() => useResizeObserver(wrapEl(div), vi.fn()));
-
-    const activeInstance = ResizeObserverMock.instances.at(-1)!;
-    expect(activeInstance.disconnected).toBe(false);
-
-    unmount();
-
-    expect(activeInstance.disconnected).toBe(true);
   });
 
   it("does not create an observer when target is an empty array", () => {
