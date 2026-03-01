@@ -4,7 +4,7 @@ import * as path from 'path'
 import { spawn } from 'child_process'
 
 const ASTRO_ROOT = process.cwd()
-const PACKAGES_ROOT = path.join(ASTRO_ROOT, '..', '..')
+const PACKAGES_ROOT = path.join(ASTRO_ROOT, '..')
 
 // --- Package configuration (edit here when adding/renaming packages) ---
 const PACKAGES = [

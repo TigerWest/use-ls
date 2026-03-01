@@ -35,12 +35,12 @@ jobs:
         run: pnpm --filter=./packages/babel --filter=./packages/vite --filter=./packages/core --filter=./packages/integrations build
 
       - name: Build docs
-        run: pnpm --filter=./packages/docs build
+        run: pnpm --filter=./docs build
 
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
         with:
-          path: packages/docs/dist
+          path: docs/dist
 
   deploy:
     needs: build

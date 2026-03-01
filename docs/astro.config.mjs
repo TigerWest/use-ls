@@ -15,9 +15,9 @@ export default defineConfig({
     plugins: [autoWrap({ allGet: true })],
     resolve: {
       alias: {
-        "@demos/core": fileURLToPath(new URL("../core/src", import.meta.url)),
+        "@demos/core": fileURLToPath(new URL("../packages/core/src", import.meta.url)),
         "@demos/integrations": fileURLToPath(
-          new URL("../integrations/src", import.meta.url),
+          new URL("../packages/integrations/src", import.meta.url),
         ),
       },
     },
