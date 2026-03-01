@@ -1,9 +1,9 @@
 "use client";
-import type { Observable } from "@legendapp/state";
+import { ObservableHint, type Observable } from "@legendapp/state";
 import { useObservable, useMount, useObserveEffect } from "@legendapp/state/react";
 import { useEventListener } from "../../browser/useEventListener";
 import { useMediaQuery } from "../../browser/useMediaQuery";
-import { useMayObservableOptions } from "../../function/useMayObservableOptions";
+import { useMaybeObservable } from "../../function/useMaybeObservable";
 import { useWhenMounted } from "../../function/useWhenMounted";
 import { defaultWindow, defaultDocument } from "../../shared/configurable";
 import type { DeepMaybeObservable } from "../../types";
@@ -26,10 +26,7 @@ export function useWindowSize(
   options?: DeepMaybeObservable<UseWindowSizeOptions>
 ): UseWindowSizeReturn {
   // Standard Pattern: normalize DeepMaybeObservable<Options> into a stable computed Observable.
-  const opts$ = useMayObservableOptions<UseWindowSizeOptions>(options, {
-    initialWidth: "peek",
-    initialHeight: "peek",
-  });
+  const opts$ = useMaybeObservable<UseWindowSizeOptions>(options);
 
   const size$ = useObservable({
     width: opts$.initialWidth.peek() ?? 0,
@@ -75,11 +72,14 @@ export function useWindowSize(
 
   useEventListener("resize", update, { passive: true });
 
-  const vp$ = useWhenMounted(() =>
-    opts$.type.peek() === "visual" ? (defaultWindow?.visualViewport ?? null) : null
-  );
+  const vp$ = useWhenMounted(() => {
+    if (opts$.type.peek() !== "visual") return null;
+    const vp = defaultWindow?.visualViewport;
+    return vp != null ? ObservableHint.opaque(vp) : null;
+  });
 
-  useEventListener(vp$, "resize", update);
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any -- vp$ wraps an opaque EventTarget; runtime valueOf() unwrapping in useEventListener handles it correctly
+  useEventListener(vp$ as any, "resize", update);
 
   // type 또는 includeScrollbar가 변경되면 즉시 재측정
   // 단일 함수 형태: opts$.type.get()/opts$.includeScrollbar.get()으로 dep 등록,

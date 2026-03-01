@@ -1,7 +1,7 @@
 import type { Observable } from "@legendapp/state";
-import { useObservable, useObserveEffect } from "@legendapp/state/react";
-import { useEffect, useRef } from "react";
-import { useMayObservableOptions } from "../../function/useMayObservableOptions";
+import { useMount, useObservable, useObserveEffect, useUnmount } from "@legendapp/state/react";
+import { useRef } from "react";
+import { useMaybeObservable } from "../../function/useMaybeObservable";
 import type { DeepMaybeObservable, MaybeObservable } from "../../types";
 import { isWindow } from "../../shared";
 import type { MaybeElement } from "../useRef$";
@@ -54,11 +54,9 @@ export function useIntersectionObserver(
   callback: IntersectionObserverCallback,
   options?: DeepMaybeObservable<UseIntersectionObserverOptions>
 ): UseIntersectionObserverReturn {
-  const opts$ = useMayObservableOptions<UseIntersectionObserverOptions>(options, {
-    immediate: "peek",
-    threshold: "peek",
-    root: "get.element",
-    rootMargin: (value) => get(value as MaybeObservable<string | undefined>),
+  const opts$ = useMaybeObservable<UseIntersectionObserverOptions>(options, {
+    root: "element",
+    rootMargin: (value: MaybeObservable<string | undefined>) => get(value),
   });
   const isSupported$ = useObservable<boolean>(typeof IntersectionObserver !== "undefined");
   const isActive$ = useObservable<boolean>(opts$.immediate.peek() !== false);
@@ -94,14 +92,13 @@ export function useIntersectionObserver(
     targets.forEach((el) => observerRef.current?.observe(el));
   };
 
-  useEffect(() => {
+  useMount(() => {
     mountedRef.current = true;
-    return () => {
-      mountedRef.current = false;
-      cleanup();
-    };
-  }, []);
-
+  });
+  useUnmount(() => {
+    mountedRef.current = false;
+    cleanup();
+  });
   useObserveEffect((e) => {
     e.onCleanup = cleanup;
     const root = opts$.root.get();

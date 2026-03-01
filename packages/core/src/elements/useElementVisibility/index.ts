@@ -2,7 +2,7 @@
 import type { Observable } from "@legendapp/state";
 import { useObservable } from "@legendapp/state/react";
 import type { DeepMaybeObservable } from "../../types";
-import { useMayObservableOptions } from "../../function/useMayObservableOptions";
+import { useMaybeObservable } from "../../function/useMaybeObservable";
 import type { MaybeElement } from "../useRef$";
 import { useIntersectionObserver } from "../useIntersectionObserver";
 import type { UseIntersectionObserverOptions } from "../useIntersectionObserver";
@@ -48,10 +48,8 @@ export function useElementVisibility(
   element: MaybeElement,
   options?: DeepMaybeObservable<UseElementVisibilityOptions>
 ): Observable<boolean> {
-  const opts$ = useMayObservableOptions<UseElementVisibilityOptions>(options, {
-    initialValue: "peek",
-    once: "peek",
-    scrollTarget: "get.element",
+  const opts$ = useMaybeObservable<UseElementVisibilityOptions>(options, {
+    scrollTarget: "element",
   });
 
   const isVisible$ = useObservable<boolean>(opts$.initialValue.peek() ?? false);

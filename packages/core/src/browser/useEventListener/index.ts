@@ -1,7 +1,7 @@
 "use client";
 import { isObservable, type Observable } from "@legendapp/state";
-import { useObservable, useObserve } from "@legendapp/state/react";
-import { useEffect, useRef } from "react";
+import { useMount, useObservable, useObserve, useUnmount } from "@legendapp/state/react";
+import { useLayoutEffect, useRef } from "react";
 import { isRef$, type MaybeElement } from "../../elements/useRef$";
 import { normalizeTargets } from "../../shared/normalizeTargets";
 import { get } from "../../function/get";
@@ -136,7 +136,9 @@ export function useEventListener(...args: any[]): () => void {
   // Always keep the latest listeners in a ref so that the forwarder always
   // calls the current listeners, even after re-renders change the functions.
   const listenersRef = useRef(toArray(rawListener));
-  listenersRef.current = toArray(rawListener);
+  useLayoutEffect(() => {
+    listenersRef.current = toArray(rawListener);
+  });
 
   // Stable forwarder — one function reference per hook instance, created once.
   const forwarder = useRef((ev: Event) => {
@@ -145,7 +147,9 @@ export function useEventListener(...args: any[]): () => void {
 
   // Options ref prevents recreating listeners when only options change.
   const optionsRef = useRef(rawOptions);
-  optionsRef.current = rawOptions;
+  useLayoutEffect(() => {
+    optionsRef.current = rawOptions;
+  });
 
   // Observable mount flag — lets useObserve react when component mounts.
   const mounted$ = useObservable(false);
@@ -222,16 +226,15 @@ export function useEventListener(...args: any[]): () => void {
     );
   });
 
-  // useEffect manages mount state only — no setup logic here.
-  useEffect(() => {
+  // useMount/useUnmount manage mount state only — no setup logic here.
+  useMount(() => {
     mounted$.set(true);
-    return () => {
-      mounted$.set(false);
-      cleanupsRef.current.forEach((fn) => fn());
-      cleanupsRef.current = [];
-    };
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- Legend-State: mounted$ observable reference is stable, no re-subscription needed
-  }, []);
+  });
+  useUnmount(() => {
+    mounted$.set(false);
+    cleanupsRef.current.forEach((fn) => fn());
+    cleanupsRef.current = [];
+  });
 
   // Return a manual cleanup function for imperative removal.
   return () => {

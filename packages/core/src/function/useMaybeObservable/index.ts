@@ -2,42 +2,34 @@ import { isObservable, ObservableHint, type Observable } from "@legendapp/state"
 import { useObservable } from "@legendapp/state/react";
 import { useMemo, useRef } from "react";
 import { get } from "../get";
-import { peek } from "../peek";
 import type { DeepMaybeObservable, MaybeObservable } from "../../types";
-import { getElement, peekElement } from "../../elements/useRef$";
+import { getElement } from "../../elements/useRef$";
 import type { MaybeElement } from "../../elements/useRef$";
 
 /**
  * Per-field resolution hint for the object-form transform.
  *
- * Resolution axis (`get` / `peek`):
- * - `'get'`          — no-op; Legend-State auto-derefs the field Observable and registers the dep at the call site. **Default.**
- * - `'peek'`         — `peek(fieldValue)` — no dep, mount-time-only snapshot.
- *
- * Legend-State wrapping axis (dot-notation):
- * - `'get.opaque'`   — `get()` then `ObservableHint.opaque()`. Null-safe.
- * - `'get.plain'`    — `get()` then `ObservableHint.plain()`. Prevents nested auto-deref. Null-safe.
- * - `'get.function'` — `get()` then `ObservableHint.function()`. For callbacks. Null-safe.
- * - `'get.element'`  — `getElement(fieldValue)` (reactive) then `ObservableHint.opaque()`. For MaybeElement.
- * - `'peek.element'` — `peekElement(fieldValue)` (non-reactive) then `ObservableHint.opaque()`. For MaybeElement.
+ * - `'default'`  — no-op; Legend-State auto-derefs the field Observable. **Default.**
+ * - `'opaque'`   — `get()` then `ObservableHint.opaque()`. Null-safe.
+ * - `'plain'`    — `get()` then `ObservableHint.plain()`. Prevents nested auto-deref. Null-safe.
+ * - `'function'` — `get()` then `ObservableHint.function()`. For callbacks. Null-safe.
+ * - `'element'`  — `getElement(fieldValue)` (reactive) then `ObservableHint.opaque()`. For MaybeElement.
  *
  * Escape hatch:
- * - `(value) => R`   — custom transform function.
+ * - `(value) => R` — custom transform function.
  */
 // eslint-disable-next-line @typescript-eslint/no-explicit-any -- generic type parameter defaults require any for maximum flexibility
 export type FieldHint<V = any, R = any> =
-  | "get"
-  | "peek"
-  | "get.opaque"
-  | "get.plain"
-  | "get.function"
-  | "get.element"
-  | "peek.element"
+  | "default"
+  | "opaque"
+  | "plain"
+  | "function"
+  | "element"
   | ((value: MaybeObservable<V>) => R);
 
 /**
  * Maps each field of `T` to a `FieldHint`.
- * Fields not specified default to `'get'` (reactive resolution via Legend-State auto-deref).
+ * Fields not specified default to `'default'` (Legend-State auto-deref).
  */
 export type FieldTransformMap<T> = {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any -- transform return type is intentionally any (arbitrary transform output)
@@ -45,7 +37,7 @@ export type FieldTransformMap<T> = {
 };
 
 /**
- * The `transform` parameter for `useMayObservableOptions`.
+ * The `transform` parameter for `useMaybeObservable`.
  * - **Object form:** declarative per-field hints — `FieldTransformMap<T>`.
  * - **Function form:** full custom compute — `(current) => T | undefined`.
  */
@@ -60,25 +52,22 @@ function applyObjectTransform<T>(raw: T | undefined, map: FieldTransformMap<T>):
     const hint = (map as Record<string, FieldHint>)[key];
     const fieldValue = result[key] as MaybeObservable<unknown>;
     switch (hint) {
-      case "peek":
-        result[key] = peek(fieldValue);
-        break;
-      case "get.opaque": {
+      case "opaque": {
         const v = get(fieldValue);
         if (v != null) result[key] = ObservableHint.opaque(v);
         break;
       }
-      case "get.plain": {
+      case "plain": {
         const v = get(fieldValue);
         if (v != null) result[key] = ObservableHint.plain(v as object);
         break;
       }
-      case "get.function": {
+      case "function": {
         const v = get(fieldValue);
         if (v != null) result[key] = ObservableHint.function(v as (...args: unknown[]) => unknown);
         break;
       }
-      case "get.element": {
+      case "element": {
         if (fieldValue !== undefined) {
           // Observable resolving to undefined means "not set" — propagate undefined
           if (isObservable(fieldValue) && (fieldValue as Observable<unknown>).get() === undefined) {
@@ -90,26 +79,11 @@ function applyObjectTransform<T>(raw: T | undefined, map: FieldTransformMap<T>):
         }
         break;
       }
-      case "peek.element": {
-        if (fieldValue !== undefined) {
-          // Observable resolving to undefined means "not set" — propagate undefined
-          if (
-            isObservable(fieldValue) &&
-            (fieldValue as Observable<unknown>).peek() === undefined
-          ) {
-            result[key] = undefined;
-            break;
-          }
-          const el = peekElement(fieldValue as MaybeElement);
-          result[key] = el != null ? ObservableHint.opaque(el) : null;
-        }
-        break;
-      }
       default:
         if (typeof hint === "function") {
           result[key] = hint(fieldValue);
         }
-      // 'get' or undefined → no action; Legend-State auto-derefs per-field Observables
+      // 'default' or undefined → no action; Legend-State auto-derefs per-field Observables
     }
   }
   return result as T;
@@ -129,15 +103,15 @@ function applyObjectTransform<T>(raw: T | undefined, map: FieldTransformMap<T>):
  *
  * @param options - DeepMaybeObservable options to normalize
  * @param transform - Optional transform. Two forms:
- *   - **Object form:** `FieldTransformMap<T>` — per-field hints (`'peek'`, `'get.opaque'`, etc.).
- *     Defaults to `'get'` for unspecified fields.
+ *   - **Object form:** `FieldTransformMap<T>` — per-field hints (`'opaque'`, `'function'`, etc.).
+ *     Defaults to `'default'` for unspecified fields.
  *     **Note:** has no effect when `options` is an outer `Observable<T>` — in that case the
  *     proxy is returned as-is (same as no transform), preserving Legend-State's
  *     reference-equality tracking behavior. Use per-field Observables or plain objects
  *     when field-level hints are needed.
  *   - **Function form:** `(current) => T | undefined` — full custom compute for complex cases.
  */
-export function useMayObservableOptions<T>(
+export function useMaybeObservable<T>(
   options: DeepMaybeObservable<T> | undefined,
   transform?: Transform<T>
 ): Observable<T | undefined> {

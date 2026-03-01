@@ -2,7 +2,7 @@
 import type { Observable } from "@legendapp/state";
 import { useObservable } from "@legendapp/state/react";
 import { useCallback, useRef } from "react";
-import { useMayObservableOptions } from "../../function/useMayObservableOptions";
+import { useMaybeObservable } from "../../function/useMaybeObservable";
 import type { DeepMaybeObservable } from "../../types";
 import { type MaybeElement } from "../useRef$";
 import { useEventListener } from "../../browser/useEventListener";
@@ -48,16 +48,16 @@ export function useDropZone(
   const normalizedOptions = typeof options === "function" ? { onDrop: options } : options;
 
   // Normalize DeepMaybeObservable options with per-field resolution hints.
-  // 'get.function': callback fields — Legend-State stores the function directly,
-  //                 not as a child observable → access via opts$.peek()?.fieldName
-  // 'get.plain':    dataTypes — string[] | fn union, prevents deep-proxy wrapping
-  const opts$ = useMayObservableOptions(normalizedOptions, {
-    onDrop: "get.function",
-    onEnter: "get.function",
-    onLeave: "get.function",
-    onOver: "get.function",
-    checkValidity: "get.function",
-    dataTypes: "get.plain",
+  // 'function': callback fields — Legend-State stores the function directly,
+  //             not as a child observable → access via opts$.peek()?.fieldName
+  // 'plain':    dataTypes — string[] | fn union, prevents deep-proxy wrapping
+  const opts$ = useMaybeObservable(normalizedOptions, {
+    onDrop: "function",
+    onEnter: "function",
+    onLeave: "function",
+    onOver: "function",
+    checkValidity: "function",
+    dataTypes: "plain",
   });
 
   const files$ = useObservable<File[] | null>(null);

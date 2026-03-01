@@ -234,12 +234,13 @@ describe("useDropZone()", () => {
     expect(result.current.files$.get()).toBeNull();
   });
 
-  it("unmount removes event listeners", () => {
+  it("unmount removes event listeners", async () => {
     const div = createDiv();
     const removeSpy = vi.spyOn(div, "removeEventListener");
 
     const { unmount } = renderHook(() => useDropZone(wrapEl(div) as any));
     unmount();
+    await Promise.resolve();
 
     expect(removeSpy).toHaveBeenCalled();
   });

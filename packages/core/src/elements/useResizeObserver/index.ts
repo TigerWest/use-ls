@@ -1,6 +1,6 @@
 import type { Observable } from "@legendapp/state";
-import { useObservable, useObserve } from "@legendapp/state/react";
-import { useEffect, useRef } from "react";
+import { useObservable, useObserveEffect } from "@legendapp/state/react";
+import { useLayoutEffect, useRef } from "react";
 import { normalizeTargets } from "../../shared/normalizeTargets";
 import { MaybeElement } from "../useRef$";
 
@@ -46,16 +46,15 @@ export function useResizeObserver(
 
   // Always use the latest callback without recreating the observer on every render.
   const callbackRef = useRef(callback);
-  callbackRef.current = callback;
+  useLayoutEffect(() => {
+    callbackRef.current = callback;
+  });
 
   // Always use the latest options in setup() without reactive tracking.
   const optionsRef = useRef(options);
-  optionsRef.current = options;
-
-  // Guards useObserve's initial synchronous run (before DOM is committed) from
-  // calling setup(). Only useMount triggers the first setup, ensuring elements
-  // are available in the DOM before observation begins.
-  const mountedRef = useRef(false);
+  useLayoutEffect(() => {
+    optionsRef.current = options;
+  });
 
   const cleanup = () => {
     observerRef.current?.disconnect();
@@ -75,27 +74,11 @@ export function useResizeObserver(
     });
   };
 
-  // Initial setup after DOM is committed; cleanup on unmount.
-  // useEffect is used directly (instead of useMount/useUnmount) because
-  // Legend-State's useEffectOnce delays cleanup via queueMicrotask in test
-  // environments, making synchronous post-unmount assertions unreliable.
-  useEffect(() => {
-    mountedRef.current = true;
+  // Setup after DOM commit; re-run and cleanup when observable targets change.
+  useObserveEffect((e) => {
+    e.onCleanup = cleanup;
+    normalizeTargets(target); // registers reactive dep for Ref$/Observable targets
     setup();
-    return () => {
-      mountedRef.current = false;
-      cleanup();
-    };
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- setup/cleanup are stable closures; intentional empty dep array
-  }, []);
-
-  // Re-run setup whenever observable targets (Ref$ or Observable<Element>) change.
-  // Reading normalizeTargets(target) here registers observable dependencies so
-  // useObserve re-fires when a tracked target value changes.
-  // mountedRef guard prevents a redundant setup on the initial synchronous run.
-  useObserve(() => {
-    normalizeTargets(target);
-    if (mountedRef.current) setup();
   });
 
   return { isSupported$, stop: cleanup };

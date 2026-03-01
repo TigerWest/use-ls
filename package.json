@@ -9,6 +9,7 @@
   "scripts": {
     "docs:dev": "pnpm --filter docs docs:dev",
     "build": "pnpm -r build",
+    "build:packages": "pnpm --filter './packages/**' build",
     "dev": "pnpm -r dev",
     "prepare": "husky",
     "test": "vitest run && pnpm test:browser",

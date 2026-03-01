@@ -1,13 +1,13 @@
 import type { Observable } from "@legendapp/state";
-import { useObservable } from "@legendapp/state/react";
-import { useCallback, useEffect, useRef } from "react";
+import { useMount, useObservable, useUnmount } from "@legendapp/state/react";
+import { useCallback, useRef } from "react";
 import { type MaybeElement, peekElement } from "../useRef$";
 import { useResizeObserver } from "../useResizeObserver";
 import { useMutationObserver } from "../useMutationObserver";
 import { useEventListener } from "../../browser/useEventListener";
 import { isWindow } from "../../shared";
 import { defaultWindow } from "../../shared/configurable";
-import { useMayObservableOptions } from "../../function/useMayObservableOptions";
+import { useMaybeObservable } from "../../function/useMaybeObservable";
 import type { DeepMaybeObservable } from "../../types";
 
 export interface UseElementBoundingOptions {
@@ -68,9 +68,7 @@ export function useElementBounding(
   target: MaybeElement,
   options?: DeepMaybeObservable<UseElementBoundingOptions>
 ): UseElementBoundingReturn {
-  const opts$ = useMayObservableOptions<UseElementBoundingOptions>(options, {
-    immediate: "peek",
-  });
+  const opts$ = useMaybeObservable<UseElementBoundingOptions>(options);
 
   const bounding$ = useObservable({ ...ZERO });
 
@@ -78,6 +76,7 @@ export function useElementBounding(
   const unmountedRef = useRef(false);
   const rafRef = useRef<number | null>(null);
 
+  // eslint-disable-next-line react-hooks/preserve-manual-memoization
   const recalculate = useCallback(() => {
     const el = peekElement(target) as Element | null;
     if (!el || !(el instanceof Element)) {
@@ -97,6 +96,7 @@ export function useElementBounding(
     });
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
+  // eslint-disable-next-line react-hooks/preserve-manual-memoization
   const update = useCallback(() => {
     if (opts$.useCssTransforms.peek() !== false) {
       rafRef.current = requestAnimationFrame(() => {
@@ -132,19 +132,18 @@ export function useElementBounding(
     { passive: true }
   );
 
-  useEffect(() => {
+  useMount(() => {
     unmountedRef.current = false;
     if (opts$.immediate.peek() !== false) update();
-    return () => {
-      unmountedRef.current = true;
-      if (rafRef.current !== null) {
-        cancelAnimationFrame(rafRef.current);
-        rafRef.current = null;
-      }
-      if (opts$.reset.peek() !== false) bounding$.assign({ ...ZERO });
-    };
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- Legend-State: .peek()/.assign() does not create reactive subscription, empty deps [] is intentional
-  }, []);
+  });
+  useUnmount(() => {
+    unmountedRef.current = true;
+    if (rafRef.current !== null) {
+      cancelAnimationFrame(rafRef.current);
+      rafRef.current = null;
+    }
+    if (opts$.reset.peek() !== false) bounding$.assign({ ...ZERO });
+  });
 
   return {
     x$: bounding$.x,

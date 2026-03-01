@@ -2,7 +2,7 @@
 import type { Observable } from "@legendapp/state";
 import { useObservable } from "@legendapp/state/react";
 import { useCallback, useRef } from "react";
-import { useMayObservableOptions } from "../../function/useMayObservableOptions";
+import { useMaybeObservable } from "../../function/useMaybeObservable";
 import type { DeepMaybeObservable } from "../../types";
 import { type MaybeElement, peekElement } from "../useRef$";
 import { useEventListener } from "../../browser/useEventListener";
@@ -78,17 +78,14 @@ export function useDraggable(
   options?: DeepMaybeObservable<UseDraggableOptions>
 ): UseDraggableReturn {
   // Normalize options — per-field resolution hints
-  const opts$ = useMayObservableOptions<UseDraggableOptions>(options, {
-    // mount-time only: read once, no reactive dep
-    initialValue: "peek",
+  const opts$ = useMaybeObservable<UseDraggableOptions>(options, {
     // MaybeElement fields: reactive + OpaqueObject wrapping
-    handle: "get.element",
-    containerElement: "get.element",
+    handle: "element",
+    containerElement: "element",
     // callback fields: function hint to prevent deep observation
-    onStart: "get.function",
-    onMove: "get.function",
-    onEnd: "get.function",
-    // remaining fields default to 'get' (auto-deref)
+    onStart: "function",
+    onMove: "function",
+    onEnd: "function",
   });
 
   // State: Rule 3 — initialValue is peek (mount-time only)

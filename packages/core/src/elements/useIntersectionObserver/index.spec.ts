@@ -212,11 +212,12 @@ describe("useIntersectionObserver()", () => {
     );
   });
 
-  it("disconnects observer on unmount", () => {
+  it("disconnects observer on unmount", async () => {
     const el = document.createElement("div");
     const { unmount } = renderHook(() => useIntersectionObserver(wrapEl(el), vi.fn()));
 
     unmount();
+    await Promise.resolve();
 
     expect(mockDisconnect).toHaveBeenCalled();
   });
@@ -409,11 +410,12 @@ describe("useIntersectionObserver()", () => {
     expect(result.current.isActive$.get()).toBe(false);
   });
 
-  it("pause() after unmount does not throw", () => {
+  it("pause() after unmount does not throw", async () => {
     const el = document.createElement("div");
     const { result, unmount } = renderHook(() => useIntersectionObserver(wrapEl(el), vi.fn()));
 
     unmount();
+    await Promise.resolve();
     mockDisconnect.mockClear();
 
     expect(() => act(() => result.current.pause())).not.toThrow();

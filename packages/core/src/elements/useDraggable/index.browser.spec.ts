@@ -218,6 +218,7 @@ describe("useDraggable() — real browser", () => {
     await waitFor(() => expect(result.current.isDragging$.get()).toBe(true));
 
     unmount();
+    await Promise.resolve();
 
     // After unmount, window pointermove should not update state
     firePointerMove(100, 100);

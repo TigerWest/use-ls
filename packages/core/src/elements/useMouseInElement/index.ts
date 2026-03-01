@@ -3,7 +3,7 @@ import { useObservable } from "@legendapp/state/react";
 import { useCallback } from "react";
 import { isWindow } from "../../shared";
 import { defaultWindow, defaultDocument } from "../../shared/configurable";
-import { useMayObservableOptions } from "../../function/useMayObservableOptions";
+import { useMaybeObservable } from "../../function/useMaybeObservable";
 import type { DeepMaybeObservable } from "../../types";
 import { type MaybeElement, peekElement } from "../useRef$";
 import { useResizeObserver } from "../useResizeObserver";
@@ -67,13 +67,7 @@ export function useMouseInElement(
   target: MaybeElement,
   options?: DeepMaybeObservable<UseMouseInElementOptions>
 ): UseMouseInElementReturn {
-  // Rule 2: normalize with useMayObservableOptions
-  // Rule 3: handleOutside/windowScroll/windowResize are mount-time-only → 'peek'
-  const opts$ = useMayObservableOptions<UseMouseInElementOptions>(options, {
-    handleOutside: "peek",
-    windowScroll: "peek",
-    windowResize: "peek",
-  });
+  const opts$ = useMaybeObservable<UseMouseInElementOptions>(options);
 
   // Global mouse coordinates (exposed in return)
   const mouse$ = useObservable({ x: 0, y: 0 });

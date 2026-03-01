@@ -38,21 +38,23 @@ describe("useEventListener() — no target (window default)", () => {
     expect(listener).toHaveBeenCalledOnce();
   });
 
-  it("removes listener from window on unmount", () => {
+  it("removes listener from window on unmount", async () => {
     const removeSpy = vi.spyOn(window, "removeEventListener");
     const listener = vi.fn();
     const { unmount } = renderHook(() => useEventListener("click", listener));
 
     unmount();
+    await Promise.resolve();
 
     expect(removeSpy).toHaveBeenCalledWith("click", expect.any(Function), undefined);
   });
 
-  it("does not invoke listener after unmount", () => {
+  it("does not invoke listener after unmount", async () => {
     const listener = vi.fn();
     const { unmount } = renderHook(() => useEventListener("click", listener));
 
     unmount();
+    await Promise.resolve();
     act(() => {
       window.dispatchEvent(new Event("click"));
     });
@@ -120,12 +122,13 @@ describe("useEventListener() — Window / Document target", () => {
     expect(listener).toHaveBeenCalledOnce();
   });
 
-  it("removes Document listener on unmount", () => {
+  it("removes Document listener on unmount", async () => {
     const removeSpy = vi.spyOn(document, "removeEventListener");
     const listener = vi.fn();
     const { unmount } = renderHook(() => useEventListener(document, "click", listener));
 
     unmount();
+    await Promise.resolve();
 
     expect(removeSpy).toHaveBeenCalledWith("click", expect.any(Function), undefined);
   });
@@ -158,13 +161,14 @@ describe("useEventListener() — HTMLElement target", () => {
     expect(listener).toHaveBeenCalledOnce();
   });
 
-  it("removes listener from element on unmount", () => {
+  it("removes listener from element on unmount", async () => {
     const div = document.createElement("div");
     const removeSpy = vi.spyOn(div, "removeEventListener");
     const listener = vi.fn();
     const { unmount } = renderHook(() => useEventListener(div, "click", listener));
 
     unmount();
+    await Promise.resolve();
 
     expect(removeSpy).toHaveBeenCalledWith("click", expect.any(Function), undefined);
   });
@@ -264,7 +268,7 @@ describe("useEventListener() — Arrayable targets / events / listeners", () => 
     expect(addSpy).toHaveBeenCalledTimes(1);
   });
 
-  it("removes the handler from all targets on unmount", () => {
+  it("removes the handler from all targets on unmount", async () => {
     const a = document.createElement("div");
     const b = document.createElement("span");
     const removeA = vi.spyOn(a, "removeEventListener");
@@ -275,6 +279,7 @@ describe("useEventListener() — Arrayable targets / events / listeners", () => 
     );
 
     unmount();
+    await Promise.resolve();
 
     expect(removeA).toHaveBeenCalledTimes(1);
     expect(removeB).toHaveBeenCalledTimes(1);
@@ -311,7 +316,7 @@ describe("useEventListener() — options", () => {
     expect(addSpy).toHaveBeenCalledWith("click", expect.any(Function), true);
   });
 
-  it("passes cloned options so mutation after registration does not affect removal", () => {
+  it("passes cloned options so mutation after registration does not affect removal", async () => {
     const div = document.createElement("div");
     const removeSpy = vi.spyOn(div, "removeEventListener");
     const listener = vi.fn();
@@ -321,6 +326,7 @@ describe("useEventListener() — options", () => {
 
     opts.passive = false;
     unmount();
+    await Promise.resolve();
 
     expect(removeSpy).toHaveBeenCalledWith(
       "click",
@@ -504,7 +510,7 @@ describe("useEventListener() — Ref$ reactive target", () => {
     expect(addSpyB).toHaveBeenCalledTimes(1);
   });
 
-  it("removes Ref$ listener on unmount", () => {
+  it("removes Ref$ listener on unmount", async () => {
     const listener = vi.fn();
     const { result, unmount } = renderHook(() => {
       const el$ = useRef$<HTMLDivElement>();
@@ -519,6 +525,7 @@ describe("useEventListener() — Ref$ reactive target", () => {
     const removeSpy = vi.spyOn(div, "removeEventListener");
 
     unmount();
+    await Promise.resolve();
 
     expect(removeSpy).toHaveBeenCalledTimes(1);
   });

@@ -118,10 +118,11 @@ describe("useElementVisibility()", () => {
     );
   });
 
-  it("disconnects observer on unmount", () => {
+  it("disconnects observer on unmount", async () => {
     const el = document.createElement("div");
     const { unmount } = renderHook(() => useElementVisibility(wrapEl(el)));
     unmount();
+    await Promise.resolve();
     expect(mockDisconnect).toHaveBeenCalled();
   });
 
